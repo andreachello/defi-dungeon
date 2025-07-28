@@ -1,10 +1,11 @@
 import Dungeoneer from "dungeoneer";
+import Tile, { TileType } from "./Tile";
 import Slime from "./Slime";
 import Graphics from "../assets/Graphics";
 import DungeonScene from "../scenes/DungeonScene";
 
 export default class Map {
-  public readonly tiles: any[][];
+  public readonly tiles: Tile[][];
   public readonly width: number;
   public readonly height: number;
   public readonly tilemap: Phaser.Tilemaps.Tilemap;
@@ -32,7 +33,8 @@ export default class Map {
     for (let y = 0; y < height; y++) {
       this.tiles.push([]);
       for (let x = 0; x < width; x++) {
-        this.tiles[y][x] = dungeon.tiles[x][y];
+        const tileType = Tile.tileTypeFor(dungeon.tiles[x][y].type);
+        this.tiles[y][x] = new Tile(tileType, x, y, this);
       }
     }
 
@@ -40,14 +42,14 @@ export default class Map {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const tile = this.tiles[y][x];
-        if (tile.type === "wall" && tile.isEnclosed()) {
+        if (tile.type === TileType.Wall && tile.isEnclosed()) {
           toReset.push({ y: y, x: x });
         }
       }
     }
 
     toReset.forEach(d => {
-      this.tiles[d.y][d.x] = { type: "none" };
+      this.tiles[d.y][d.x] = new Tile(TileType.None, d.x, d.y, this);
     });
 
     const roomNumber = Math.floor(Math.random() * dungeon.rooms.length);
@@ -132,9 +134,9 @@ export default class Map {
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         const tile = this.tiles[y][x];
-        if (tile.type === "wall") {
+        if (tile.type === TileType.Wall) {
           wallLayer.putTileAt(tile.spriteIndex(), x, y);
-        } else if (tile.type === "door") {
+        } else if (tile.type === TileType.Door) {
           this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
         }
       }
@@ -164,7 +166,7 @@ export default class Map {
     this.wallLayer.setDepth(2);
   }
 
-    tileAt(x: number, y: number): any | null {
+  tileAt(x: number, y: number): Tile | null {
     if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
       return null;
     }
