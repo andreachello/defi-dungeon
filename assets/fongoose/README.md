@@ -1,0 +1,1 @@
+The files in this directory are from Fongoose's [Rogue Dungeon Tileset](https://fongoose.itch.io/rogue-dungeon-tileset-16x16) and are used with permission.

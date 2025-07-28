@@ -1,0 +1,19 @@
+{
+  "name": "defidungeon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel index.html",
+    "lint": "tsc --noEmit"
+  },
+  "author": "Andrea Chello and others",
+  "dependencies": {
+    "dungeoneer": "github:mipearson/dungeoneer#mp-fix-ts-bindings",
+    "mrpas": "^2.0.0",
+    "parcel": "^1.12.4",
+    "phaser": "^3.21.0",
+    "phaser-plugin-scene-watcher": "^4.0.0",
+    "typescript": "^3.7.4"
+  }
+}
