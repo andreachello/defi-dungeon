@@ -4,7 +4,8 @@ import Graphics from "../assets/Graphics";
 export enum TileType {
   None,
   Wall,
-  Door
+  Door,
+  LockedDoor
 }
 
 export default class Tile {
@@ -22,6 +23,8 @@ export default class Tile {
       return TileType.Wall;
     } else if (type === "door") {
       return TileType.Door;
+    } else if (type === "lockedDoor") {
+      return TileType.LockedDoor;
     } else {
       return TileType.None;
     }
@@ -112,6 +115,15 @@ export default class Tile {
         return Graphics.environment.indices.doors.vertical
       } else {
         return Graphics.environment.indices.doors.horizontal;
+      }
+    }
+
+    // Add locked door logic
+    if (this.type === TileType.LockedDoor) {
+      if (n || s) {
+        return Graphics.environment.indices.doors.lockedVertical
+      } else {
+        return Graphics.environment.indices.doors.lockedHorizontal;
       }
     }
 

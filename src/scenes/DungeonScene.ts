@@ -114,6 +114,9 @@ export default class DungeonScene extends Phaser.Scene {
       this
     );
 
+    // Set the player reference in the map so it can check for keys
+    map.setPlayer(this.player);
+
     this.slimes = map.slimes;
     this.slimeGroup = this.physics.add.group(this.slimes.map(s => s.sprite));
 
@@ -177,6 +180,7 @@ export default class DungeonScene extends Phaser.Scene {
         this.tilemap!.tileToWorldX(room.x),
         this.tilemap!.tileToWorldY(room.y),
         this.tilemap!.tileToWorldX(room.width),
+        
         this.tilemap!.tileToWorldY(room.height)
       );
     }

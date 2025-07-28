@@ -3,6 +3,7 @@ import Tile, { TileType } from "./Tile";
 import Slime from "./Slime";
 import Graphics from "../assets/Graphics";
 import DungeonScene from "../scenes/DungeonScene";
+import Player from "./Player";
 
 export default class Map {
   public readonly tiles: Tile[][];
@@ -18,6 +19,9 @@ export default class Map {
   public readonly slimes: Slime[];
 
   public readonly rooms: Dungeoneer.Room[];
+
+  // Add player reference
+  private player: Player | null = null;
 
   constructor(width: number, height: number, scene: DungeonScene) {
     const dungeon = Dungeoneer.build({
@@ -35,6 +39,19 @@ export default class Map {
       for (let x = 0; x < width; x++) {
         const tileType = Tile.tileTypeFor(dungeon.tiles[x][y].type);
         this.tiles[y][x] = new Tile(tileType, x, y, this);
+      }
+    }
+
+    // Convert some doors to locked doors
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const tile = this.tiles[y][x];
+        if (tile.type === TileType.Door) {
+          // 30% chance to make a door locked
+          if (Math.random() < 0.3) {
+            this.tiles[y][x] = new Tile(TileType.LockedDoor, x, y, this);
+          }
+        }
       }
     }
 
@@ -138,19 +155,22 @@ export default class Map {
           wallLayer.putTileAt(tile.spriteIndex(), x, y);
         } else if (tile.type === TileType.Door) {
           this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
+        } else if (tile.type === TileType.LockedDoor) {
+          this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
         }
       }
     }
     wallLayer.setCollisionBetween(0, 0x7f);
-    const collidableDoors = [
+    // Set collision for regular doors only (these will break when touched)
+    const regularDoors = [
       Graphics.environment.indices.doors.horizontal,
       Graphics.environment.indices.doors.vertical
     ];
-    this.doorLayer.setCollision(collidableDoors);
 
     this.doorLayer.setTileIndexCallback(
-      collidableDoors,
+      regularDoors,
       (_: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Regular door behavior - always break
         this.doorLayer.putTileAt(
           Graphics.environment.indices.doors.destroyed,
           tile.x,
@@ -161,10 +181,55 @@ export default class Map {
       },
       this
     );
+
+    // Add callback for locked doors
+    const lockedDoors = [
+      Graphics.environment.indices.doors.lockedHorizontal,
+      Graphics.environment.indices.doors.lockedVertical
+    ];
+
+    this.doorLayer.setTileIndexCallback(
+      lockedDoors,
+      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Check if player has a key
+        if (this.player && this.player.hasKey()) {
+          // Consume the key
+          if (this.player.useKey()) {
+            // Treat locked door like a regular door - break it
+            this.doorLayer.putTileAt(
+              Graphics.environment.indices.doors.destroyed,
+              tile.x,
+              tile.y
+            );
+            this.tileAt(tile.x, tile.y)!.open();
+            scene.fov!.recalculate();
+
+            // Emit event to update inventory display
+            scene.events.emit('inventoryUpdated');
+          }
+        }
+        // If no key, do nothing - door remains locked
+      },
+      this
+    );
+
+    // Set collision for all doors (including locked ones)
+    const allDoors = [
+      Graphics.environment.indices.doors.horizontal,
+      Graphics.environment.indices.doors.vertical,
+      Graphics.environment.indices.doors.lockedHorizontal,
+      Graphics.environment.indices.doors.lockedVertical
+    ];
+    this.doorLayer.setCollision(allDoors);
     this.doorLayer.setDepth(3);
 
     this.wallLayer = this.tilemap.convertLayerToStatic(wallLayer);
     this.wallLayer.setDepth(2);
+  }
+
+  // Add method to set player reference
+  setPlayer(player: Player) {
+    this.player = player;
   }
 
   tileAt(x: number, y: number): Tile | null {

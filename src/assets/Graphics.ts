@@ -49,7 +49,10 @@ const environment = {
     doors: {
       horizontal: 0x81,
       vertical: 0x92,
-      destroyed: 0x35
+      destroyed: 0x35,
+      lockedHorizontal: 0x91,
+      lockedVertical: 0x94,
+      bossDoor: 0x83
     },
     walls: {
       alone: 0x14,

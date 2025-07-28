@@ -136,6 +136,24 @@ export default class Player {
     }
   }
 
+  hasKey(): boolean {
+    const key = this.inventory.getItem("key");
+    return key !== undefined && key.quantity > 0;
+  }
+
+  useKey(): boolean {
+    const key = this.inventory.getItem("key");
+    if (key && key.quantity > 0) {
+      const success = this.inventory.removeItem("key", 1);
+      if (success) {
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
+        return true;
+      }
+    }
+    return false;
+  }
+
   update(time: number) {
     this.time = time;
     const keys = this.keys;
