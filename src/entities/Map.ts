@@ -157,8 +157,7 @@ export default class Map {
           tile.y
         );
         this.tileAt(tile.x, tile.y)!.open();
-
-
+        scene.fov!.recalculate();
       },
       this
     );

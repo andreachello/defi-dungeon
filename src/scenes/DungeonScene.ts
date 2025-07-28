@@ -39,6 +39,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.lastX = -1;
     this.lastY = -1;
     this.player = null;
+    this.fov = null;
     this.tilemap = null;
     this.slimes = [];
     this.slimeGroup = null;
@@ -130,6 +131,7 @@ export default class DungeonScene extends Phaser.Scene {
       this.slimePlayerCollide,
       this
     );
+
 
     this.input.keyboard.on("keydown_R", () => {
       this.scene.stop("InfoScene");

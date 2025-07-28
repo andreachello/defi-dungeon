@@ -14,7 +14,7 @@ export default class Tile {
   public readonly x: number;
   public readonly y: number;
   public seen: boolean;
-  public desiredAlpha: number; 
+  public desiredAlpha: number; // TODO: Move out of this class, specific to FOV
   public readonly corridor: boolean;
 
   public static tileTypeFor(type: string): TileType {
