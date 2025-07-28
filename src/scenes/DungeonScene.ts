@@ -1,8 +1,10 @@
 import Phaser from "phaser";
 import Graphics from "../assets/Graphics";
+import FOVLayer from "../entities/FOVLayer";
 import Player from "../entities/Player";
 import Slime from "../entities/Slime";
 import Map from "../entities/Map";
+import PickupItem from "../entities/PickupItem";
 
 const worldTileHeight = 81;
 const worldTileWidth = 81;
@@ -13,9 +15,15 @@ export default class DungeonScene extends Phaser.Scene {
   player: Player | null;
   slimes: Slime[];
   slimeGroup: Phaser.GameObjects.Group | null;
+  fov: FOVLayer | null;
   tilemap: Phaser.Tilemaps.Tilemap | null;
   roomDebugGraphics?: Phaser.GameObjects.Graphics;
 
+  // Inventory overlay properties
+  private inventoryBackground?: Phaser.GameObjects.Rectangle;
+  private inventorySlots: Phaser.GameObjects.Rectangle[] = [];
+  private inventorySprites: Phaser.GameObjects.Sprite[] = [];
+  private inventoryTexts: Phaser.GameObjects.Text[] = [];
 
   preload(): void {
     this.load.image(Graphics.environment.name, Graphics.environment.file);
@@ -98,6 +106,7 @@ export default class DungeonScene extends Phaser.Scene {
     const map = new Map(worldTileWidth, worldTileHeight, this);
     this.tilemap = map.tilemap;
 
+    this.fov = new FOVLayer(map);
 
     this.player = new Player(
       this.tilemap.tileToWorldX(map.startingX),
@@ -132,6 +141,14 @@ export default class DungeonScene extends Phaser.Scene {
       this
     );
 
+    // Add collision detection for pickup items
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.children.list.filter(child => child instanceof PickupItem),
+      this.playerItemCollide,
+      undefined,
+      this
+    );
 
     this.input.keyboard.on("keydown_R", () => {
       this.scene.stop("InfoScene");
@@ -148,6 +165,9 @@ export default class DungeonScene extends Phaser.Scene {
       this.roomDebugGraphics!.setVisible(this.physics.world.drawDebug);
     });
 
+    this.input.keyboard.on("keydown_F", () => {
+      this.fov!.layer.setVisible(!this.fov!.layer.visible);
+    });
 
     this.roomDebugGraphics = this.add.graphics({ x: 0, y: 0 });
     this.roomDebugGraphics.setVisible(false);
@@ -163,6 +183,27 @@ export default class DungeonScene extends Phaser.Scene {
 
     this.scene.run("InfoScene");
 
+    // Launch inventory scene in parallel
+    this.scene.launch("InventoryScene");
+
+    // Pass player reference to inventory scene
+    this.scene.get("InventoryScene").events.emit('setPlayer', this.player);
+
+    // Listen for inventory updates and forward them to inventory scene
+    this.events.on('inventoryUpdated', () => {
+      this.scene.get("InventoryScene").events.emit('updateInventory');
+    });
+  }
+
+  // Add new collision handler for items
+  playerItemCollide(
+    playerSprite: Phaser.GameObjects.GameObject,
+    itemSprite: Phaser.GameObjects.GameObject
+  ) {
+    console.log("Player collided with item!");
+    if (itemSprite instanceof PickupItem) {
+      itemSprite.pickupItem();
+    }
   }
 
   update(time: number, delta: number) {
@@ -186,5 +227,9 @@ export default class DungeonScene extends Phaser.Scene {
       this.tilemap!.worldToTileX(camera.worldView.height) + 2
     );
 
+    this.fov!.update(player, bounds, delta);
+
+    // Notify inventory scene to update if needed
+    // The inventory scene will handle its own updates
   }
 }
