@@ -154,6 +154,24 @@ export default class Player {
     return false;
   }
 
+  hasGoldKey(): boolean {
+    const goldKey = this.inventory.getItem("gold_key");
+    return goldKey !== undefined && goldKey.quantity > 0;
+  }
+
+  useGoldKey(): boolean {
+    const goldKey = this.inventory.getItem("gold_key");
+    if (goldKey && goldKey.quantity > 0) {
+      const success = this.inventory.removeItem("gold_key", 1);
+      if (success) {
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
+        return true;
+      }
+    }
+    return false;
+  }
+
   update(time: number) {
     this.time = time;
     const keys = this.keys;

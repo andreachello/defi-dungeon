@@ -54,6 +54,15 @@ const environment = {
       lockedVertical: 0x94,
       bossDoor: 0x83
     },
+    torch: 0xd1,
+    button: {
+      off: 0xa5,
+      on: 0xa4,
+    },
+    chest: {
+      closed: 0xc1,
+      open: 0xc3
+    },
     walls: {
       alone: 0x14,
       intersections: {
