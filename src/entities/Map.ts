@@ -157,6 +157,8 @@ export default class Map {
           tile.y
         );
         this.tileAt(tile.x, tile.y)!.open();
+
+
       },
       this
     );
