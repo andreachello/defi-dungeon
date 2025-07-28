@@ -42,18 +42,8 @@ export default class Map {
       }
     }
 
-    // Convert some doors to locked doors
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const tile = this.tiles[y][x];
-        if (tile.type === TileType.Door) {
-          // 30% chance to make a door locked
-          if (Math.random() < 0.3) {
-            this.tiles[y][x] = new Tile(TileType.LockedDoor, x, y, this);
-          }
-        }
-      }
-    }
+    // Convert some doors to locked doors based on room access
+    this.lockRoomsByPercentage(dungeon.rooms, 0.4); // 40% of rooms will be locked
 
     const toReset = [];
     for (let y = 0; y < height; y++) {
@@ -194,21 +184,20 @@ export default class Map {
         // Check if player has a key
         if (this.player && this.player.hasKey()) {
           // Consume the key
-          if (this.player.useKey()) {
-            // Treat locked door like a regular door - break it
-            this.doorLayer.putTileAt(
-              Graphics.environment.indices.doors.destroyed,
-              tile.x,
-              tile.y
-            );
-            this.tileAt(tile.x, tile.y)!.open();
-            scene.fov!.recalculate();
+          this.player.useKey();
 
-            // Emit event to update inventory display
-            scene.events.emit('inventoryUpdated');
-          }
+          // Treat locked door like a regular door - break it
+          this.doorLayer.putTileAt(
+            Graphics.environment.indices.doors.destroyed,
+            tile.x,
+            tile.y
+          );
+          this.tileAt(tile.x, tile.y)!.open();
+          scene.fov!.recalculate();
+        } else {
+          // Show feedback when trying to open locked door without key
+          this.showLockedDoorMessage(scene, tile.x, tile.y);
         }
-        // If no key, do nothing - door remains locked
       },
       this
     );
@@ -248,5 +237,89 @@ export default class Map {
         );
       }) != undefined
     );
+  }
+
+  // Add method to show locked door message
+  private showLockedDoorMessage(scene: DungeonScene, tileX: number, tileY: number) {
+    const worldX = scene.tilemap!.tileToWorldX(tileX);
+    const worldY = scene.tilemap!.tileToWorldY(tileY);
+
+    const text = scene.add.text(
+      worldX + Graphics.environment.width / 2,
+      worldY - 20,
+      ' Locked!',
+      {
+        fontSize: '12px',
+        color: '#ff0000',
+        backgroundColor: '#000000',
+        padding: { x: 4, y: 2 }
+      }
+    );
+    text.setOrigin(0.5);
+    text.setDepth(10);
+
+    // Fade out and remove after 1.5 seconds
+    scene.tweens.add({
+      targets: text,
+      alpha: 0,
+      y: text.y - 10,
+      duration: 1500,
+      onComplete: () => text.destroy()
+    });
+  }
+
+  // Add method to lock rooms by percentage
+  private lockRoomsByPercentage(rooms: Dungeoneer.Room[], lockPercentage: number) {
+    // Determine which rooms to lock
+    const roomsToLock = Math.floor(rooms.length * lockPercentage);
+    const lockedRoomIndices = new Set<number>();
+
+    // Randomly select rooms to lock
+    for (let i = 0; i < roomsToLock; i++) {
+      let roomIndex: number;
+      do {
+        roomIndex = Math.floor(Math.random() * rooms.length);
+      } while (lockedRoomIndices.has(roomIndex));
+      lockedRoomIndices.add(roomIndex);
+    }
+
+    // Find all doors that lead to locked rooms and lock them
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const tile = this.tiles[y][x];
+        if (tile.type === TileType.Door) {
+          // Check if this door leads to a locked room
+          if (this.doorLeadsToLockedRoom(x, y, rooms, lockedRoomIndices)) {
+            this.tiles[y][x] = new Tile(TileType.LockedDoor, x, y, this);
+          }
+        }
+      }
+    }
+  }
+
+
+  // Helper to check if a door leads to a locked room
+  private doorLeadsToLockedRoom(x: number, y: number, rooms: Dungeoneer.Room[], lockedRoomIndices: Set<number>): boolean {
+    // A door is between two tiles; check both sides for room membership
+    const neighbors = [
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 }
+    ];
+    for (const { dx, dy } of neighbors) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
+      for (let i = 0; i < rooms.length; i++) {
+        if (lockedRoomIndices.has(i)) {
+          const room = rooms[i];
+          if (room.containsTile(nx, ny)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 }

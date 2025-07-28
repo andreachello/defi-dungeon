@@ -1,4 +1,4 @@
-import Map from "./Map";
+import DungeonMap from "./Map";
 import Graphics from "../assets/Graphics";
 
 export enum TileType {
@@ -11,7 +11,7 @@ export enum TileType {
 export default class Tile {
   public collides: boolean;
   public readonly type: TileType;
-  public readonly map: Map;
+  public readonly map: DungeonMap;
   public readonly x: number;
   public readonly y: number;
   public seen: boolean;
@@ -30,7 +30,7 @@ export default class Tile {
     }
   }
 
-  constructor(type: TileType, x: number, y: number, map: Map) {
+  constructor(type: TileType, x: number, y: number, map: DungeonMap) {
     this.type = type;
     this.collides = type !== TileType.None;
     this.map = map;

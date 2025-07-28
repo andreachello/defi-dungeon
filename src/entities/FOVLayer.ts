@@ -1,5 +1,5 @@
 import Graphics from "../assets/Graphics";
-import Map from "../entities/Map";
+import DungeonMap from "../entities/Map";
 import { Mrpas } from "mrpas";
 import Phaser from "phaser";
 
@@ -33,9 +33,9 @@ export default class FOVLayer {
   public layer: Phaser.Tilemaps.DynamicTilemapLayer;
   private mrpas: Mrpas | undefined;
   private lastPos: Phaser.Math.Vector2;
-  private map: Map;
+  private map: DungeonMap;
 
-  constructor(map: Map) {
+  constructor(map: DungeonMap) {
     const utilTiles = map.tilemap.addTilesetImage("util");
 
     this.layer = map.tilemap
