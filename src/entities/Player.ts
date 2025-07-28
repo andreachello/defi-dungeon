@@ -1,187 +1,236 @@
-import Dungeoneer from "dungeoneer";
-import Tile, { TileType } from "./Tile";
-import Slime from "./Slime";
+import Phaser from "phaser";
 import Graphics from "../assets/Graphics";
-import DungeonScene from "../scenes/DungeonScene";
+import Inventory from "./Inventory";
+import Item from "./Item";
 
-export default class Map {
-  public readonly tiles: Tile[][];
-  public readonly width: number;
-  public readonly height: number;
-  public readonly tilemap: Phaser.Tilemaps.Tilemap;
-  public readonly wallLayer: Phaser.Tilemaps.StaticTilemapLayer;
-  public readonly doorLayer: Phaser.Tilemaps.DynamicTilemapLayer;
+const speed = 125;
+const attackSpeed = 500;
+const attackDuration = 165;
+const staggerDuration = 200;
+const staggerSpeed = 100;
+const attackCooldown = attackDuration * 2;
 
-  public readonly startingX: number;
-  public readonly startingY: number;
+interface Keys {
+  up: Phaser.Input.Keyboard.Key;
+  down: Phaser.Input.Keyboard.Key;
+  left: Phaser.Input.Keyboard.Key;
+  right: Phaser.Input.Keyboard.Key;
+  space: Phaser.Input.Keyboard.Key;
+  w: Phaser.Input.Keyboard.Key;
+  a: Phaser.Input.Keyboard.Key;
+  s: Phaser.Input.Keyboard.Key;
+  d: Phaser.Input.Keyboard.Key;
+}
 
-  public readonly slimes: Slime[];
+export default class Player {
+  public sprite: Phaser.Physics.Arcade.Sprite;
+  public inventory: Inventory;
+  private keys: Keys;
 
-  public readonly rooms: Dungeoneer.Room[];
+  private attackUntil: number;
+  private staggerUntil: number;
+  private attackLockedUntil: number;
+  private emitter: Phaser.GameObjects.Particles.ParticleEmitter;
+  private flashEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
+  private body: Phaser.Physics.Arcade.Body;
+  private attacking: boolean;
+  private time: number;
+  private staggered: boolean;
+  private scene: Phaser.Scene;
+  private facingUp: boolean;
 
-  constructor(width: number, height: number, scene: DungeonScene) {
-    const dungeon = Dungeoneer.build({
-      width: width,
-      height: height
+  constructor(x: number, y: number, scene: Phaser.Scene) {
+    this.scene = scene;
+    this.sprite = scene.physics.add.sprite(x, y, Graphics.player.name, 0);
+    this.sprite.setSize(8, 8);
+    this.sprite.setOffset(20, 28);
+    this.sprite.anims.play(Graphics.player.animations.idle.key);
+    this.facingUp = false;
+    this.sprite.setDepth(5);
+
+    // Initialize inventory
+    this.inventory = new Inventory();
+
+    this.keys = scene.input.keyboard.addKeys({
+      up: Phaser.Input.Keyboard.KeyCodes.UP,
+      down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
+      w: "w",
+      a: "a",
+      s: "s",
+      d: "d"
+    }) as Keys;
+
+    this.attackUntil = 0;
+    this.attackLockedUntil = 0;
+    this.attacking = false;
+    this.staggerUntil = 0;
+    this.staggered = false;
+    const particles = scene.add.particles(Graphics.player.name);
+    particles.setDepth(6);
+    this.emitter = particles.createEmitter({
+      alpha: { start: 0.7, end: 0, ease: "Cubic.easeOut" },
+      follow: this.sprite,
+      quantity: 1,
+      lifespan: 200,
+      blendMode: Phaser.BlendModes.ADD,
+      scaleX: () => (this.sprite.flipX ? -1 : 1),
+      emitCallback: (particle: Phaser.GameObjects.Particles.Particle) => {
+        particle.frame = this.sprite.frame;
+      }
     });
-    this.rooms = dungeon.rooms;
+    this.emitter.stop();
 
-    this.width = width;
-    this.height = height;
-
-    this.tiles = [];
-    for (let y = 0; y < height; y++) {
-      this.tiles.push([]);
-      for (let x = 0; x < width; x++) {
-        const tileType = Tile.tileTypeFor(dungeon.tiles[x][y].type);
-        this.tiles[y][x] = new Tile(tileType, x, y, this);
+    this.flashEmitter = particles.createEmitter({
+      alpha: { start: 0.5, end: 0, ease: "Cubic.easeOut" },
+      follow: this.sprite,
+      quantity: 1,
+      lifespan: 100,
+      scaleX: () => (this.sprite.flipX ? -1 : 1),
+      emitCallback: (particle: Phaser.GameObjects.Particles.Particle) => {
+        particle.frame = this.sprite.frame;
       }
-    }
-
-    const toReset = [];
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const tile = this.tiles[y][x];
-        if (tile.type === TileType.Wall && tile.isEnclosed()) {
-          toReset.push({ y: y, x: x });
-        }
-      }
-    }
-
-    toReset.forEach(d => {
-      this.tiles[d.y][d.x] = new Tile(TileType.None, d.x, d.y, this);
     });
+    this.flashEmitter.stop();
 
-    const roomNumber = Math.floor(Math.random() * dungeon.rooms.length);
-
-    const firstRoom = dungeon.rooms[roomNumber];
-    this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
-    this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
-
-    this.tilemap = scene.make.tilemap({
-      tileWidth: Graphics.environment.width,
-      tileHeight: Graphics.environment.height,
-      width: width,
-      height: height
-    });
-
-    const dungeonTiles = this.tilemap.addTilesetImage(
-      Graphics.environment.name,
-      Graphics.environment.name,
-      Graphics.environment.width,
-      Graphics.environment.height,
-      Graphics.environment.margin,
-      Graphics.environment.spacing
-    );
-
-    const groundLayer = this.tilemap
-      .createBlankDynamicLayer("Ground", dungeonTiles, 0, 0)
-      .randomize(
-        0,
-        0,
-        this.width,
-        this.height,
-        Graphics.environment.indices.floor.outerCorridor
-      );
-
-    this.slimes = [];
-
-    for (let room of dungeon.rooms) {
-      groundLayer.randomize(
-        room.x - 1,
-        room.y - 1,
-        room.width + 2,
-        room.height + 2,
-        Graphics.environment.indices.floor.outer
-      );
-
-      if (room.height < 4 || room.width < 4) {
-        continue;
-      }
-
-      const roomTL = this.tilemap.tileToWorldXY(room.x + 1, room.y + 1);
-      const roomBounds = this.tilemap.tileToWorldXY(
-        room.x + room.width - 1,
-        room.y + room.height - 1
-      );
-      const numSlimes = Phaser.Math.Between(1, 3);
-      for (let i = 0; i < numSlimes; i++) {
-        this.slimes.push(
-          new Slime(
-            Phaser.Math.Between(roomTL.x, roomBounds.x),
-            Phaser.Math.Between(roomTL.y, roomBounds.y),
-            scene
-          )
-        );
-      }
-    }
-    this.tilemap.convertLayerToStatic(groundLayer).setDepth(1);
-
-    const wallLayer = this.tilemap.createBlankDynamicLayer(
-      "Wall",
-      dungeonTiles,
-      0,
-      0
-    );
-
-    this.doorLayer = this.tilemap.createBlankDynamicLayer(
-      "Door",
-      dungeonTiles,
-      0,
-      0
-    );
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const tile = this.tiles[y][x];
-        if (tile.type === TileType.Wall) {
-          wallLayer.putTileAt(tile.spriteIndex(), x, y);
-        } else if (tile.type === TileType.Door) {
-          this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
-        }
-      }
-    }
-    wallLayer.setCollisionBetween(0, 0x7f);
-    const collidableDoors = [
-      Graphics.environment.indices.doors.horizontal,
-      Graphics.environment.indices.doors.vertical
-    ];
-    this.doorLayer.setCollision(collidableDoors);
-
-    this.doorLayer.setTileIndexCallback(
-      collidableDoors,
-      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        this.doorLayer.putTileAt(
-          Graphics.environment.indices.doors.destroyed,
-          tile.x,
-          tile.y
-        );
-        this.tileAt(tile.x, tile.y)!.open();
-        scene.fov!.recalculate();
-      },
-      this
-    );
-    this.doorLayer.setDepth(3);
-
-    this.wallLayer = this.tilemap.convertLayerToStatic(wallLayer);
-    this.wallLayer.setDepth(2);
+    this.body = <Phaser.Physics.Arcade.Body>this.sprite.body;
+    this.time = 0;
   }
 
-  tileAt(x: number, y: number): Tile | null {
-    if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
-      return null;
-    }
-    return this.tiles[y][x];
+  isAttacking(): boolean {
+    return this.attacking;
   }
 
-  withinRoom(x: number, y: number): boolean {
-    return (
-      this.rooms.find(r => {
-        const { top, left, right, bottom } = r.getBoundingBox();
-        return (
-          y >= top - 1 && y <= bottom + 1 && x >= left - 1 && x <= right + 1
-        );
-      }) != undefined
-    );
+  stagger(): void {
+    if (this.time > this.staggerUntil) {
+      this.staggered = true;
+      // TODO
+      this.scene.cameras.main.shake(150, 0.001);
+      this.scene.cameras.main.flash(50, 100, 0, 0);
+    }
+  }
+
+  addItemToInventory(item: Item): boolean {
+    return this.inventory.addItem(item);
+  }
+
+  useItem(itemId: string): boolean {
+    const item = this.inventory.getItem(itemId);
+    if (!item) return false;
+
+    switch (item.data.type) {
+      case "health_potion":
+        // Add health restoration logic here
+        console.log("Used health potion!");
+        this.inventory.removeItem(itemId, 1);
+        return true;
+      case "mana_potion":
+        // Add mana restoration logic here
+        console.log("Used mana potion!");
+        this.inventory.removeItem(itemId, 1);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  update(time: number) {
+    this.time = time;
+    const keys = this.keys;
+    let attackAnim = "";
+    let moveAnim = "";
+
+    if (this.staggered && !this.body.touching.none) {
+      this.staggerUntil = this.time + staggerDuration;
+      this.staggered = false;
+
+      this.body.setVelocity(0);
+      if (this.body.touching.down) {
+        this.body.setVelocityY(-staggerSpeed);
+      } else if (this.body.touching.up) {
+        this.body.setVelocityY(staggerSpeed);
+      } else if (this.body.touching.left) {
+        this.body.setVelocityX(staggerSpeed);
+        this.sprite.setFlipX(true);
+      } else if (this.body.touching.right) {
+        this.body.setVelocityX(-staggerSpeed);
+        this.sprite.setFlipX(false);
+      }
+      this.sprite.anims.play(Graphics.player.animations.stagger.key);
+
+      this.flashEmitter.start();
+      // this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
+    }
+
+    if (time < this.attackUntil || time < this.staggerUntil) {
+      return;
+    }
+
+    this.body.setVelocity(0);
+
+    const left = keys.left.isDown || keys.a.isDown;
+    const right = keys.right.isDown || keys.d.isDown;
+    const up = keys.up.isDown || keys.w.isDown;
+    const down = keys.down.isDown || keys.s.isDown;
+
+    if (!this.body.blocked.left && left) {
+      this.body.setVelocityX(-speed);
+      this.sprite.setFlipX(true);
+    } else if (!this.body.blocked.right && right) {
+      this.body.setVelocityX(speed);
+      this.sprite.setFlipX(false);
+    }
+
+    if (!this.body.blocked.up && up) {
+      this.body.setVelocityY(-speed);
+    } else if (!this.body.blocked.down && down) {
+      this.body.setVelocityY(speed);
+    }
+
+    if (left || right) {
+      moveAnim = Graphics.player.animations.walk.key;
+      attackAnim = Graphics.player.animations.slash.key;
+      this.facingUp = false;
+    } else if (down) {
+      moveAnim = Graphics.player.animations.walk.key;
+      attackAnim = Graphics.player.animations.slashDown.key;
+      this.facingUp = false;
+    } else if (up) {
+      moveAnim = Graphics.player.animations.walkBack.key;
+      attackAnim = Graphics.player.animations.slashUp.key;
+      this.facingUp = true;
+    } else if (this.facingUp) {
+      moveAnim = Graphics.player.animations.idleBack.key;
+    } else {
+      moveAnim = Graphics.player.animations.idle.key;
+    }
+
+    if (
+      keys.space!.isDown &&
+      time > this.attackLockedUntil &&
+      this.body.velocity.length() > 0
+    ) {
+      this.attackUntil = time + attackDuration;
+      this.attackLockedUntil = time + attackDuration + attackCooldown;
+      this.body.velocity.normalize().scale(attackSpeed);
+      this.sprite.anims.play(attackAnim, true);
+      this.emitter.start();
+      this.sprite.setBlendMode(Phaser.BlendModes.ADD);
+      this.attacking = true;
+      return;
+    }
+
+    this.attacking = false;
+    this.sprite.anims.play(moveAnim, true);
+    this.body.velocity.normalize().scale(speed);
+    this.sprite.setBlendMode(Phaser.BlendModes.NORMAL);
+    if (this.emitter.on) {
+      this.emitter.stop();
+    }
+    if (this.flashEmitter.on) {
+      this.flashEmitter.stop();
+    }
   }
 }
