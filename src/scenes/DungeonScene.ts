@@ -5,6 +5,7 @@ import Player from "../entities/Player";
 import Slime from "../entities/Slime";
 import Map from "../entities/Map";
 import PickupItem from "../entities/PickupItem";
+import { TileType } from "../entities/Tile";
 
 const worldTileHeight = 81;
 const worldTileWidth = 81;
@@ -117,6 +118,10 @@ export default class DungeonScene extends Phaser.Scene {
     // Set the player reference in the map so it can check for keys
     map.setPlayer(this.player);
 
+    // Create minimap after player is created
+    console.log("Creating minimap in DungeonScene...");
+    // Remove the minimap property since we're using a separate scene
+
     this.slimes = map.slimes;
     this.slimeGroup = this.physics.add.group(this.slimes.map(s => s.sprite));
 
@@ -180,7 +185,7 @@ export default class DungeonScene extends Phaser.Scene {
         this.tilemap!.tileToWorldX(room.x),
         this.tilemap!.tileToWorldY(room.y),
         this.tilemap!.tileToWorldX(room.width),
-        
+
         this.tilemap!.tileToWorldY(room.height)
       );
     }
@@ -190,8 +195,23 @@ export default class DungeonScene extends Phaser.Scene {
     // Launch inventory scene in parallel
     this.scene.launch("InventoryScene");
 
+    // Launch minimap scene in parallel
+    this.scene.launch("MinimapScene");
+
     // Pass player reference to inventory scene
     this.scene.get("InventoryScene").events.emit('setPlayer', this.player);
+
+    // Pass map and player references to minimap scene with a small delay
+    this.time.delayedCall(100, () => {
+      const minimapScene = this.scene.get("MinimapScene");
+      if (minimapScene) {
+        console.log("Passing map and player to MinimapScene");
+        minimapScene.events.emit('setMap', map);
+        minimapScene.events.emit('setPlayer', this.player);
+      } else {
+        console.log("MinimapScene not found!");
+      }
+    });
 
     // Listen for inventory updates and forward them to inventory scene
     this.events.on('inventoryUpdated', () => {
@@ -232,6 +252,12 @@ export default class DungeonScene extends Phaser.Scene {
     );
 
     this.fov!.update(player, bounds, delta);
+
+    // Update minimap
+    const minimapScene = this.scene.get("MinimapScene");
+    if (minimapScene) {
+      minimapScene.events.emit('updateMinimap');
+    }
 
     // Notify inventory scene to update if needed
     // The inventory scene will handle its own updates

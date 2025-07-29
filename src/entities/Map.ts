@@ -666,4 +666,17 @@ export default class Map {
     // Only place torches on empty floor tiles
     return tile.type === TileType.None;
   }
+
+  // Add public getters for minimap access
+  public getLockedRooms(): Set<number> {
+    return this.lockedRooms;
+  }
+
+  public getGoldLockedRooms(): Set<number> {
+    return this.goldLockedRooms;
+  }
+
+  public getBossLockedRooms(): Set<number> {
+    return this.bossLockedRooms;
+  }
 }
