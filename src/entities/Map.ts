@@ -122,6 +122,7 @@ export default class Map {
       const roomIndex = this.rooms.indexOf(room);
       const isLocked = this.lockedRooms.has(roomIndex);
       const isGoldLocked = this.goldLockedRooms.has(roomIndex);
+      const isBossRoom = this.bossLockedRooms.has(roomIndex);
 
       const roomTL = this.tilemap.tileToWorldXY(room.x + 1, room.y + 1);
       const roomBounds = this.tilemap.tileToWorldXY(
@@ -131,7 +132,7 @@ export default class Map {
 
       // Increase slime count based on room type
       let numSlimes: number;
-      if (isLocked || isGoldLocked) {
+      if (isLocked || isGoldLocked || isBossRoom) {
         // Locked rooms have more enemies (3-6 slimes)
         numSlimes = Phaser.Math.Between(3, 6);
       } else {
@@ -146,8 +147,12 @@ export default class Map {
           scene
         );
 
-        // Mark slimes in locked rooms to drop gold keys
-        if (isLocked || isGoldLocked) {
+        // Mark slimes in locked rooms to drop appropriate keys
+        if (isBossRoom) {
+          (slime as any).dropsBossKey = true;
+        } else if (isGoldLocked) {
+          (slime as any).dropsBossKey = true;
+        } else if (isLocked) {
           (slime as any).dropsGoldKey = true;
         }
 
@@ -254,12 +259,12 @@ export default class Map {
     this.doorLayer.setTileIndexCallback(
       goldLockedDoors,
       (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Check if player has a key
-        if (this.player && this.player.hasKey()) {
-          // Consume the key
-          this.player.useKey();
+        // Check if player has a gold key
+        if (this.player && this.player.hasGoldKey()) {
+          // Consume the gold key
+          this.player.useGoldKey();
 
-          // Treat locked door like a regular door - break it
+          // Treat gold locked door like a regular door - break it
           this.doorLayer.putTileAt(
             Graphics.environment.indices.doors.destroyed,
             tile.x,
@@ -275,7 +280,7 @@ export default class Map {
       this
     );
 
-    // Add callback for gold locked doors (boss doors)
+    // Add callback for boss doors
     const bossDoors = [
       Graphics.environment.indices.doors.bossDoor
     ];
@@ -283,10 +288,10 @@ export default class Map {
     this.doorLayer.setTileIndexCallback(
       bossDoors,
       (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Check if player has a gold key
-        if (this.player && this.player.hasGoldKey()) {
-          // Consume the gold key
-          this.player.useGoldKey();
+        // Check if player has a boss key
+        if (this.player && this.player.hasBossKey()) {
+          // Consume the boss key
+          this.player.useBossKey();
 
           // Treat boss door like a regular door - break it
           this.doorLayer.putTileAt(
@@ -297,7 +302,7 @@ export default class Map {
           this.tileAt(tile.x, tile.y)!.open();
           scene.fov!.recalculate();
         } else {
-          // Show feedback when trying to open boss door without gold key
+          // Show feedback when trying to open boss door without boss key
           this.showBossDoorMessage(scene, tile.x, tile.y);
         }
       },
@@ -522,15 +527,68 @@ export default class Map {
       const room = this.rooms[roomIndex];
       const isLocked = this.lockedRooms.has(roomIndex);
       const isGoldLocked = this.goldLockedRooms.has(roomIndex);
+      const isBossRoom = this.bossLockedRooms.has(roomIndex);
 
       if (isLocked || isGoldLocked) {
         // Place torches along all walls
         this.placeTorchesAlongWalls(room);
       }
+
+      // Add special torch placement for boss room entrances
+      if (isBossRoom) {
+        this.placeTorchesAtBossRoomEntrance(room);
+      }
     }
 
     // Set depth for decoration layer
     this.decorationLayer.setDepth(4);
+  }
+
+  // Add method to place torches at boss room entrance
+  private placeTorchesAtBossRoomEntrance(bossRoom: Dungeoneer.Room) {
+    // Find all doors that lead to the boss room
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const tile = this.tiles[y][x];
+        if (tile.type === TileType.BossDoor) {
+          // Place torches around the boss door entrance
+          this.placeTorchesAroundDoor(x, y);
+        }
+      }
+    }
+  }
+
+  // Add method to place torches around a door
+  private placeTorchesAroundDoor(doorX: number, doorY: number) {
+    // Define positions around the door to place torches
+    const torchPositions = [
+      // Adjacent to the door
+      { x: doorX - 1, y: doorY },
+      { x: doorX + 1, y: doorY },
+      { x: doorX, y: doorY - 1 },
+      { x: doorX, y: doorY + 1 },
+      // Diagonal positions for more dramatic effect
+      { x: doorX - 1, y: doorY - 1 },
+      { x: doorX + 1, y: doorY - 1 },
+      { x: doorX - 1, y: doorY + 1 },
+      { x: doorX + 1, y: doorY + 1 },
+      // Extended positions for a more dramatic entrance
+      { x: doorX - 2, y: doorY },
+      { x: doorX + 2, y: doorY },
+      { x: doorX, y: doorY - 2 },
+      { x: doorX, y: doorY + 2 }
+    ];
+
+    // Place torches at valid positions
+    for (const pos of torchPositions) {
+      if (this.isValidTorchPosition(pos.x, pos.y)) {
+        this.decorationLayer.putTileAt(
+          Graphics.environment.indices.torch,
+          pos.x,
+          pos.y
+        );
+      }
+    }
   }
 
   // Add method to place torches along room walls

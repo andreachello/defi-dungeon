@@ -60,6 +60,18 @@ export default class Item {
         });
     }
 
+    static createBossKey(amount: number = 1): Item {
+        return new Item({
+            id: "boss_key",
+            name: "Boss Key",
+            type: ItemType.KEY,
+            spriteIndex: 10,
+            description: "Opens boss doors",
+            stackable: false,
+            maxStack: 1
+        }, amount);
+    }
+
     canStackWith(other: Item): boolean {
         return this.data.id === other.data.id && this.data.stackable;
     }

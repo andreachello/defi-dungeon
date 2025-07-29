@@ -16,7 +16,8 @@ export default class Slime {
   private path: Phaser.Math.Vector2[];
   private pathIndex: number;
   private map: DungeonMap;
-  public dropsGoldKey: boolean = false; // Add property to track drop type
+  public dropsGoldKey: boolean = false;
+  public dropsBossKey: boolean = false;
 
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
@@ -85,6 +86,10 @@ export default class Slime {
         // Slimes in locked rooms drop gold keys
         item = Item.createGoldKey();
         console.log(`Creating gold key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
+      } else if (this.dropsBossKey) {
+        // Slimes in golden locked rooms drop boss keys
+        item = Item.createBossKey();
+        console.log(`Creating boss key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
       } else {
         // Normal slimes drop regular items
         const itemType = Phaser.Math.Between(0, 2);

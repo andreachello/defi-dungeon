@@ -172,6 +172,24 @@ export default class Player {
     return false;
   }
 
+  hasBossKey(): boolean {
+    const bossKey = this.inventory.getItem("boss_key");
+    return bossKey !== undefined && bossKey.quantity > 0;
+  }
+
+  useBossKey(): boolean {
+    const bossKey = this.inventory.getItem("boss_key");
+    if (bossKey && bossKey.quantity > 0) {
+      const success = this.inventory.removeItem("boss_key", 1);
+      if (success) {
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
+        return true;
+      }
+    }
+    return false;
+  }
+
   update(time: number) {
     this.time = time;
     const keys = this.keys;
