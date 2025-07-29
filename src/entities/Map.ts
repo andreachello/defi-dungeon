@@ -24,6 +24,7 @@ export default class Map {
   // Add room locking properties
   private lockedRooms: Set<number> = new Set();
   private goldLockedRooms: Set<number> = new Set();
+  private bossLockedRooms: Set<number> = new Set(); // Add boss rooms set
 
   // Add player reference
   private player: Player | null = null;
@@ -188,6 +189,8 @@ export default class Map {
           this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
         } else if (tile.type === TileType.GoldLockedDoor) {
           this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
+        } else if (tile.type === TileType.BossDoor) {
+          this.doorLayer.putTileAt(tile.spriteIndex(), x, y);
         }
       }
     }
@@ -243,6 +246,35 @@ export default class Map {
       this
     );
 
+    const goldLockedDoors = [
+      Graphics.environment.indices.doors.goldLockedHorizontal,
+      Graphics.environment.indices.doors.goldLockedVertical
+    ];
+
+    this.doorLayer.setTileIndexCallback(
+      goldLockedDoors,
+      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Check if player has a key
+        if (this.player && this.player.hasKey()) {
+          // Consume the key
+          this.player.useKey();
+
+          // Treat locked door like a regular door - break it
+          this.doorLayer.putTileAt(
+            Graphics.environment.indices.doors.destroyed,
+            tile.x,
+            tile.y
+          );
+          this.tileAt(tile.x, tile.y)!.open();
+          scene.fov!.recalculate();
+        } else {
+          // Show feedback when trying to open gold locked door without gold key
+          this.showGoldLockedDoorMessage(scene, tile.x, tile.y);
+        }
+      },
+      this
+    );
+
     // Add callback for gold locked doors (boss doors)
     const bossDoors = [
       Graphics.environment.indices.doors.bossDoor
@@ -278,6 +310,8 @@ export default class Map {
       Graphics.environment.indices.doors.vertical,
       Graphics.environment.indices.doors.lockedHorizontal,
       Graphics.environment.indices.doors.lockedVertical,
+      Graphics.environment.indices.doors.goldLockedHorizontal,
+      Graphics.environment.indices.doors.goldLockedVertical,
       Graphics.environment.indices.doors.bossDoor
     ];
     this.doorLayer.setCollision(allDoors);
@@ -323,8 +357,8 @@ export default class Map {
       .filter(({ room }) => room.width >= 6 && room.height >= 6); // Minimum size for locked rooms
 
     const eligibleCount = eligibleRooms.length;
-    const normalLockCount = Math.floor(eligibleCount * 0.3); // 30% of eligible rooms
-    const goldLockCount = Math.floor(eligibleCount * 0.05); // 5% of eligible rooms
+    const normalLockCount = Math.floor(eligibleCount * 0.4); // 30% of eligible rooms
+    const goldLockCount = Math.floor(eligibleCount * 0.1); // 10% of eligible rooms
 
     // Shuffle eligible rooms
     for (let i = eligibleRooms.length - 1; i > 0; i--) {
@@ -332,14 +366,17 @@ export default class Map {
       [eligibleRooms[i], eligibleRooms[j]] = [eligibleRooms[j], eligibleRooms[i]];
     }
 
-    // Assign normal locks
-    for (let i = 0; i < normalLockCount; i++) {
+    // Always assign 1 boss room first
+    this.bossLockedRooms.add(eligibleRooms[0].index);
+
+    // Assign normal locks (skip the first room since it's the boss room)
+    for (let i = 1; i < Math.min(1 + normalLockCount, eligibleRooms.length); i++) {
       this.lockedRooms.add(eligibleRooms[i].index);
     }
 
-    // Assign gold locks (avoiding rooms already locked with normal keys)
+    // Assign gold locks (avoiding rooms already assigned)
     let goldLocked = 0;
-    for (let i = normalLockCount; i < eligibleRooms.length && goldLocked < goldLockCount; i++) {
+    for (let i = 1 + normalLockCount; i < eligibleRooms.length && goldLocked < goldLockCount; i++) {
       this.goldLockedRooms.add(eligibleRooms[i].index);
       goldLocked++;
     }
@@ -357,6 +394,8 @@ export default class Map {
             this.tiles[y][x] = new Tile(TileType.LockedDoor, x, y, this);
           } else if (leadsToLockedRoom === 'gold') {
             this.tiles[y][x] = new Tile(TileType.GoldLockedDoor, x, y, this);
+          } else if (leadsToLockedRoom === 'boss') {
+            this.tiles[y][x] = new Tile(TileType.BossDoor, x, y, this);
           }
         }
       }
@@ -364,7 +403,7 @@ export default class Map {
   }
 
   // Helper: does this door lead to a locked room?
-  private doorLeadsToLockedRoom(x: number, y: number): 'normal' | 'gold' | null {
+  private doorLeadsToLockedRoom(x: number, y: number): 'normal' | 'gold' | 'boss' | null {
     // A door is between two rooms/corridors. Check both sides.
     const neighbors = [
       { dx: 1, dy: 0 },
@@ -382,6 +421,7 @@ export default class Map {
         ny >= room.y && ny < room.y + room.height
       );
       if (roomIndex !== -1) {
+        if (this.bossLockedRooms && this.bossLockedRooms.has(roomIndex)) return 'boss';
         if (this.goldLockedRooms.has(roomIndex)) return 'gold';
         if (this.lockedRooms.has(roomIndex)) return 'normal';
       }
@@ -401,6 +441,35 @@ export default class Map {
       {
         fontSize: '12px',
         color: '#ff0000',
+        backgroundColor: '#000000',
+        padding: { x: 4, y: 2 }
+      }
+    );
+    text.setOrigin(0.5);
+    text.setDepth(10);
+
+    // Fade out and remove after 1.5 seconds
+    scene.tweens.add({
+      targets: text,
+      alpha: 0,
+      y: text.y - 10,
+      duration: 1500,
+      onComplete: () => text.destroy()
+    });
+  }
+
+  // Add method to show gold locked door message
+  private showGoldLockedDoorMessage(scene: DungeonScene, tileX: number, tileY: number) {
+    const worldX = scene.tilemap!.tileToWorldX(tileX);
+    const worldY = scene.tilemap!.tileToWorldY(tileY);
+
+    const text = scene.add.text(
+      worldX + Graphics.environment.width / 2,
+      worldY - 20,
+      ' Gold Locked!',
+      {
+        fontSize: '12px',
+        color: '#ffaa00',
         backgroundColor: '#000000',
         padding: { x: 4, y: 2 }
       }

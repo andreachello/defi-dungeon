@@ -6,7 +6,8 @@ export enum TileType {
   Wall,
   Door,
   LockedDoor,
-  GoldLockedDoor
+  GoldLockedDoor,
+  BossDoor
 }
 
 export default class Tile {
@@ -28,6 +29,8 @@ export default class Tile {
       return TileType.LockedDoor;
     } else if (type === "goldLockedDoor") {
       return TileType.GoldLockedDoor;
+    } else if (type === "bossDoor") {
+      return TileType.BossDoor;
     } else {
       return TileType.None;
     }
@@ -132,6 +135,14 @@ export default class Tile {
 
     // Add gold locked door logic
     if (this.type === TileType.GoldLockedDoor) {
+      if (n || s) {
+        return Graphics.environment.indices.doors.goldLockedVertical
+      } else {
+        return Graphics.environment.indices.doors.goldLockedHorizontal
+      }
+    }
+
+    if (this.type === TileType.BossDoor) {
       if (n || s) {
         return Graphics.environment.indices.doors.bossDoor
       } else {
