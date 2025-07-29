@@ -208,15 +208,19 @@ export default class Map {
 
     this.doorLayer.setTileIndexCallback(
       regularDoors,
-      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Regular door behavior - always break
-        this.doorLayer.putTileAt(
-          Graphics.environment.indices.doors.destroyed,
-          tile.x,
-          tile.y
-        );
-        this.tileAt(tile.x, tile.y)!.open();
-        scene.fov!.recalculate();
+      (sprite: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Only break door if player touched it, not slimes
+        if (sprite && (sprite as any).scene && (sprite as any).scene.player &&
+          (sprite as any).scene.player.sprite === sprite) {
+          // Regular door behavior - always break
+          this.doorLayer.putTileAt(
+            Graphics.environment.indices.doors.destroyed,
+            tile.x,
+            tile.y
+          );
+          this.tileAt(tile.x, tile.y)!.open();
+          scene.fov!.recalculate();
+        }
       },
       this
     );
@@ -229,23 +233,27 @@ export default class Map {
 
     this.doorLayer.setTileIndexCallback(
       lockedDoors,
-      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Check if player has a key
-        if (this.player && this.player.hasKey()) {
-          // Consume the key
-          this.player.useKey();
+      (sprite: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Only check for keys if player touched it, not slimes
+        if (sprite && (sprite as any).scene && (sprite as any).scene.player &&
+          (sprite as any).scene.player.sprite === sprite) {
+          // Check if player has a key
+          if (this.player && this.player.hasKey()) {
+            // Consume the key
+            this.player.useKey();
 
-          // Treat locked door like a regular door - break it
-          this.doorLayer.putTileAt(
-            Graphics.environment.indices.doors.destroyed,
-            tile.x,
-            tile.y
-          );
-          this.tileAt(tile.x, tile.y)!.open();
-          scene.fov!.recalculate();
-        } else {
-          // Show feedback when trying to open locked door without key
-          this.showLockedDoorMessage(scene, tile.x, tile.y);
+            // Treat locked door like a regular door - break it
+            this.doorLayer.putTileAt(
+              Graphics.environment.indices.doors.destroyed,
+              tile.x,
+              tile.y
+            );
+            this.tileAt(tile.x, tile.y)!.open();
+            scene.fov!.recalculate();
+          } else {
+            // Show feedback when trying to open locked door without key
+            this.showLockedDoorMessage(scene, tile.x, tile.y);
+          }
         }
       },
       this
@@ -258,23 +266,27 @@ export default class Map {
 
     this.doorLayer.setTileIndexCallback(
       goldLockedDoors,
-      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Check if player has a gold key
-        if (this.player && this.player.hasGoldKey()) {
-          // Consume the gold key
-          this.player.useGoldKey();
+      (sprite: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Only check for gold keys if player touched it, not slimes
+        if (sprite && (sprite as any).scene && (sprite as any).scene.player &&
+          (sprite as any).scene.player.sprite === sprite) {
+          // Check if player has a gold key
+          if (this.player && this.player.hasGoldKey()) {
+            // Consume the gold key
+            this.player.useGoldKey();
 
-          // Treat gold locked door like a regular door - break it
-          this.doorLayer.putTileAt(
-            Graphics.environment.indices.doors.destroyed,
-            tile.x,
-            tile.y
-          );
-          this.tileAt(tile.x, tile.y)!.open();
-          scene.fov!.recalculate();
-        } else {
-          // Show feedback when trying to open gold locked door without gold key
-          this.showGoldLockedDoorMessage(scene, tile.x, tile.y);
+            // Treat gold locked door like a regular door - break it
+            this.doorLayer.putTileAt(
+              Graphics.environment.indices.doors.destroyed,
+              tile.x,
+              tile.y
+            );
+            this.tileAt(tile.x, tile.y)!.open();
+            scene.fov!.recalculate();
+          } else {
+            // Show feedback when trying to open gold locked door without gold key
+            this.showGoldLockedDoorMessage(scene, tile.x, tile.y);
+          }
         }
       },
       this
@@ -287,23 +299,27 @@ export default class Map {
 
     this.doorLayer.setTileIndexCallback(
       bossDoors,
-      (_: unknown, tile: Phaser.Tilemaps.Tile) => {
-        // Check if player has a boss key
-        if (this.player && this.player.hasBossKey()) {
-          // Consume the boss key
-          this.player.useBossKey();
+      (sprite: unknown, tile: Phaser.Tilemaps.Tile) => {
+        // Only check for boss keys if player touched it, not slimes
+        if (sprite && (sprite as any).scene && (sprite as any).scene.player &&
+          (sprite as any).scene.player.sprite === sprite) {
+          // Check if player has a boss key
+          if (this.player && this.player.hasBossKey()) {
+            // Consume the boss key
+            this.player.useBossKey();
 
-          // Treat boss door like a regular door - break it
-          this.doorLayer.putTileAt(
-            Graphics.environment.indices.doors.destroyed,
-            tile.x,
-            tile.y
-          );
-          this.tileAt(tile.x, tile.y)!.open();
-          scene.fov!.recalculate();
-        } else {
-          // Show feedback when trying to open boss door without boss key
-          this.showBossDoorMessage(scene, tile.x, tile.y);
+            // Treat boss door like a regular door - break it
+            this.doorLayer.putTileAt(
+              Graphics.environment.indices.doors.destroyed,
+              tile.x,
+              tile.y
+            );
+            this.tileAt(tile.x, tile.y)!.open();
+            scene.fov!.recalculate();
+          } else {
+            // Show feedback when trying to open boss door without boss key
+            this.showBossDoorMessage(scene, tile.x, tile.y);
+          }
         }
       },
       this
