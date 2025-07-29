@@ -12,6 +12,7 @@ export default class Map {
   public readonly tilemap: Phaser.Tilemaps.Tilemap;
   public readonly wallLayer: Phaser.Tilemaps.StaticTilemapLayer;
   public readonly doorLayer: Phaser.Tilemaps.DynamicTilemapLayer;
+  public readonly decorationLayer: Phaser.Tilemaps.DynamicTilemapLayer; // Add decoration layer
 
   public readonly startingX: number;
   public readonly startingY: number;
@@ -116,20 +117,40 @@ export default class Map {
         continue;
       }
 
+      // Check if this room is locked
+      const roomIndex = this.rooms.indexOf(room);
+      const isLocked = this.lockedRooms.has(roomIndex);
+      const isGoldLocked = this.goldLockedRooms.has(roomIndex);
+
       const roomTL = this.tilemap.tileToWorldXY(room.x + 1, room.y + 1);
       const roomBounds = this.tilemap.tileToWorldXY(
         room.x + room.width - 1,
         room.y + room.height - 1
       );
-      const numSlimes = Phaser.Math.Between(1, 3);
+
+      // Increase slime count based on room type
+      let numSlimes: number;
+      if (isLocked || isGoldLocked) {
+        // Locked rooms have more enemies (3-6 slimes)
+        numSlimes = Phaser.Math.Between(3, 6);
+      } else {
+        // Normal rooms have fewer enemies (1-3 slimes)
+        numSlimes = Phaser.Math.Between(1, 3);
+      }
+
       for (let i = 0; i < numSlimes; i++) {
-        this.slimes.push(
-          new Slime(
-            Phaser.Math.Between(roomTL.x, roomBounds.x),
-            Phaser.Math.Between(roomTL.y, roomBounds.y),
-            scene
-          )
+        const slime = new Slime(
+          Phaser.Math.Between(roomTL.x, roomBounds.x),
+          Phaser.Math.Between(roomTL.y, roomBounds.y),
+          scene
         );
+
+        // Mark slimes in locked rooms to drop gold keys
+        if (isLocked || isGoldLocked) {
+          (slime as any).dropsGoldKey = true;
+        }
+
+        this.slimes.push(slime);
       }
     }
     this.tilemap.convertLayerToStatic(groundLayer).setDepth(1);
@@ -143,6 +164,14 @@ export default class Map {
 
     this.doorLayer = this.tilemap.createBlankDynamicLayer(
       "Door",
+      dungeonTiles,
+      0,
+      0
+    );
+
+    // Add decoration layer for torches
+    this.decorationLayer = this.tilemap.createBlankDynamicLayer(
+      "Decoration",
       dungeonTiles,
       0,
       0
@@ -256,6 +285,9 @@ export default class Map {
 
     this.wallLayer = this.tilemap.convertLayerToStatic(wallLayer);
     this.wallLayer.setDepth(2);
+
+    // Add torch placement in locked rooms
+    this.placeTorchesInLockedRooms();
   }
 
   // Add method to set player reference
@@ -284,25 +316,31 @@ export default class Map {
   // Add method to determine which rooms should be locked
   private determineLockedRooms() {
     const roomCount = this.rooms.length;
-    const normalLockCount = Math.floor(roomCount * 0.3); // 30%
-    const goldLockCount = Math.floor(roomCount * 0.05); // 5%
 
-    // Create array of room indices and shuffle
-    const roomIndices = Array.from({ length: roomCount }, (_, i) => i);
-    for (let i = roomIndices.length - 1; i > 0; i--) {
+    // Filter for rooms that are big enough for torches
+    const eligibleRooms = this.rooms
+      .map((room, index) => ({ room, index }))
+      .filter(({ room }) => room.width >= 6 && room.height >= 6); // Minimum size for locked rooms
+
+    const eligibleCount = eligibleRooms.length;
+    const normalLockCount = Math.floor(eligibleCount * 0.3); // 30% of eligible rooms
+    const goldLockCount = Math.floor(eligibleCount * 0.05); // 5% of eligible rooms
+
+    // Shuffle eligible rooms
+    for (let i = eligibleRooms.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [roomIndices[i], roomIndices[j]] = [roomIndices[j], roomIndices[i]];
+      [eligibleRooms[i], eligibleRooms[j]] = [eligibleRooms[j], eligibleRooms[i]];
     }
 
     // Assign normal locks
     for (let i = 0; i < normalLockCount; i++) {
-      this.lockedRooms.add(roomIndices[i]);
+      this.lockedRooms.add(eligibleRooms[i].index);
     }
 
     // Assign gold locks (avoiding rooms already locked with normal keys)
     let goldLocked = 0;
-    for (let i = normalLockCount; i < roomIndices.length && goldLocked < goldLockCount; i++) {
-      this.goldLockedRooms.add(roomIndices[i]);
+    for (let i = normalLockCount; i < eligibleRooms.length && goldLocked < goldLockCount; i++) {
+      this.goldLockedRooms.add(eligibleRooms[i].index);
       goldLocked++;
     }
   }
@@ -407,5 +445,82 @@ export default class Map {
       duration: 1500,
       onComplete: () => text.destroy()
     });
+  }
+
+  // Add method to place torches in locked rooms
+  private placeTorchesInLockedRooms() {
+    for (let roomIndex = 0; roomIndex < this.rooms.length; roomIndex++) {
+      const room = this.rooms[roomIndex];
+      const isLocked = this.lockedRooms.has(roomIndex);
+      const isGoldLocked = this.goldLockedRooms.has(roomIndex);
+
+      if (isLocked || isGoldLocked) {
+        // Place torches along all walls
+        this.placeTorchesAlongWalls(room);
+      }
+    }
+
+    // Set depth for decoration layer
+    this.decorationLayer.setDepth(4);
+  }
+
+  // Add method to place torches along room walls
+  private placeTorchesAlongWalls(room: Dungeoneer.Room) {
+    const spacing = 2; // Space between torches
+
+    // Top wall
+    for (let x = room.x + 1; x < room.x + room.width - 1; x += spacing) {
+      if (this.isValidTorchPosition(x, room.y + 1)) {
+        this.decorationLayer.putTileAt(
+          Graphics.environment.indices.torch,
+          x,
+          room.y + 1
+        );
+      }
+    }
+
+    // Bottom wall
+    for (let x = room.x + 1; x < room.x + room.width - 1; x += spacing) {
+      if (this.isValidTorchPosition(x, room.y + room.height - 2)) {
+        this.decorationLayer.putTileAt(
+          Graphics.environment.indices.torch,
+          x,
+          room.y + room.height - 2
+        );
+      }
+    }
+
+    // Left wall
+    for (let y = room.y + 1; y < room.y + room.height - 1; y += spacing) {
+      if (this.isValidTorchPosition(room.x + 1, y)) {
+        this.decorationLayer.putTileAt(
+          Graphics.environment.indices.torch,
+          room.x + 1,
+          y
+        );
+      }
+    }
+
+    // Right wall
+    for (let y = room.y + 1; y < room.y + room.height - 1; y += spacing) {
+      if (this.isValidTorchPosition(room.x + room.width - 2, y)) {
+        this.decorationLayer.putTileAt(
+          Graphics.environment.indices.torch,
+          room.x + room.width - 2,
+          y
+        );
+      }
+    }
+  }
+
+  // Helper method to check if a position is valid for torch placement
+  private isValidTorchPosition(x: number, y: number): boolean {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+      return false;
+    }
+
+    const tile = this.tiles[y][x];
+    // Only place torches on empty floor tiles
+    return tile.type === TileType.None;
   }
 }

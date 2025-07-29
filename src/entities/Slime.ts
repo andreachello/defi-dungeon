@@ -3,15 +3,20 @@ import Graphics from "../assets/Graphics";
 import DungeonScene from "../scenes/DungeonScene";
 import Item from "./Item";
 import Player from "./Player";
+import DungeonMap from "./Map";
 
 const speed = 20;
 
 export default class Slime {
-  public readonly sprite: Phaser.Physics.Arcade.Sprite;
-  private readonly body: Phaser.Physics.Arcade.Body;
-  private nextAction: number;
+  public sprite: Phaser.Physics.Arcade.Sprite;
   private scene: Phaser.Scene;
-  private dungeonScene?: DungeonScene;
+  private lastMoveTime: number;
+  private moveInterval: number;
+  private moveSpeed: number;
+  private path: Phaser.Math.Vector2[];
+  private pathIndex: number;
+  private map: DungeonMap;
+  public dropsGoldKey: boolean = false; // Add property to track drop type
 
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
@@ -73,28 +78,31 @@ export default class Slime {
     console.log(`Spawning ${numItems} items`);
 
     for (let i = 0; i < numItems; i++) {
-      // Randomly choose item type
-      const itemType = Phaser.Math.Between(0, 2);
+      // Randomly choose item type, but respect the drop type
       let item: Item;
 
-      switch (itemType) {
-        case 0:
-          item = Item.createKey();
-          break;
-        case 1:
-          item = Item.createHealthPotion();
-          break;
-        case 2:
-          item = Item.createGoldKey();
-          break;
-        case 3:
-          item = Item.createKey();
-          break;
-        default:
-          item = Item.createHealthPotion();
+      if (this.dropsGoldKey) {
+        // Slimes in locked rooms drop gold keys
+        item = Item.createGoldKey();
+        console.log(`Creating gold key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
+      } else {
+        // Normal slimes drop regular items
+        const itemType = Phaser.Math.Between(0, 2);
+        switch (itemType) {
+          case 0:
+            item = Item.createKey();
+            break;
+          // case 1:
+          //   item = Item.createHealthPotion();
+          //   break;
+          // case 2:
+          //   item = Item.createHealthPotion();
+          //   break;
+          default:
+            item = Item.createKey();
+        }
+        console.log(`Creating item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
       }
-
-      console.log(`Creating item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
 
       // Add some offset to spread items out
       const xOffset = Phaser.Math.Between(-20, 20);
