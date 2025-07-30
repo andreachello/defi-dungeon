@@ -34,6 +34,9 @@ export default class Map {
   // Add player reference
   private player: Player | null = null;
 
+  // Static property to track if boss key has been dropped
+  private static bossKeyDropped: boolean = false;
+
   constructor(width: number, height: number, scene: DungeonScene) {
     // Store the scene reference
     this.scene = scene;
@@ -208,9 +211,21 @@ export default class Map {
 
         // Mark slimes in locked rooms to drop appropriate keys
         if (isBossRoom) {
-          (slime as any).dropsBossKey = true;
+          // Boss rooms don't drop boss keys anymore
+          (slime as any).dropsGoldKey = true;
         } else if (isGoldLocked) {
-          (slime as any).dropsBossKey = true;
+          // Check if player already has a boss key
+          const player = (scene as DungeonScene).player;
+          const hasBossKey = player && player.inventory.hasItem("boss_key");
+
+          if (!hasBossKey) {
+            // Only drop boss key if player doesn't have one
+            (slime as any).dropsBossKey = true;
+            console.log(`Boss key assigned to slime in gold locked room ${roomIndex}`);
+          } else {
+            // Player already has boss key, drop gold key instead
+            (slime as any).dropsGoldKey = true;
+          }
         } else if (isLocked) {
           (slime as any).dropsGoldKey = true;
         }
@@ -788,5 +803,10 @@ export default class Map {
 
     console.log(`Created chest at world position (${chestX}, ${chestY})`);
     this.chests.push(chest);
+  }
+
+  // Add method to reset boss key status (for new games)
+  static resetBossKeyStatus() {
+    Map.bossKeyDropped = false;
   }
 }

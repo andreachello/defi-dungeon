@@ -87,9 +87,18 @@ export default class Slime {
         item = Item.createGoldKey();
         console.log(`Creating gold key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
       } else if (this.dropsBossKey) {
-        // Slimes in golden locked rooms drop boss keys
-        item = Item.createBossKey();
-        console.log(`Creating boss key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
+        // Slimes in golden locked rooms drop boss keys (only if player doesn't have one)
+        const player = (scene as DungeonScene).player;
+        const hasBossKey = player && player.inventory.hasItem("boss_key");
+
+        if (!hasBossKey) {
+          item = Item.createBossKey();
+          console.log(`Creating boss key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
+        } else {
+          // Player already has boss key, drop gold key instead
+          item = Item.createGoldKey();
+          console.log(`Player has boss key, dropping gold key instead`);
+        }
       } else {
         // Normal slimes drop regular items
         const itemType = Phaser.Math.Between(0, 2);

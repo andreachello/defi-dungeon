@@ -12,9 +12,6 @@ export default class Chest {
     private scene: Phaser.Scene;
     private nextAction: number;
 
-    // Static property to track if boss key has been dropped
-    private static bossKeyDropped: boolean = false;
-
     // Getters for position
     get x(): number { return this.sprite.x; }
     get y(): number { return this.sprite.y; }
@@ -42,37 +39,24 @@ export default class Chest {
         const numItems = 1;
 
         for (let i = 0; i < numItems; i++) {
+            const itemType = Phaser.Math.Between(0, 2);
             let item: Item;
 
-            // Check if boss key should be dropped (only if not already dropped)
-            if (!Chest.bossKeyDropped && Math.random() < 0.1) { // 10% chance for boss key
-                item = Item.createBossKey();
-                Chest.bossKeyDropped = true; // Mark as dropped
-                console.log("Boss key generated in chest!");
-            } else {
-                // Regular item generation
-                const itemType = Phaser.Math.Between(0, 2);
-                switch (itemType) {
-                    case 0:
-                        item = Item.createSpeedPotion();
-                        break;
-                    case 1:
-                        item = Item.createVisionPotion();
-                        break;
-                    default:
-                        item = Item.createSpeedPotion();
-                }
+            switch (itemType) {
+                case 0:
+                    item = Item.createSpeedPotion();
+                    break;
+                case 1:
+                    item = Item.createVisionPotion();
+                    break;
+                default:
+                    item = Item.createSpeedPotion();
             }
 
             this.items.push(item);
         }
 
         console.log(`Chest contains ${this.items.length} items`);
-    }
-
-    // Static method to reset boss key drop status (for new games)
-    static resetBossKeyStatus() {
-        Chest.bossKeyDropped = false;
     }
 
     openChest() {
