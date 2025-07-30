@@ -118,56 +118,59 @@ export default class Slime {
         console.log(`Creating item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);
       }
 
-      // Add some offset to spread items out
-      const xOffset = Phaser.Math.Between(-20, 20);
-      const yOffset = Phaser.Math.Between(-20, 20);
+      // Find a valid floor position for the item
+      const validPosition = this.findValidFloorPosition(scene);
 
-      // Create item sprite directly
-      const itemSprite = scene.physics.add.sprite(
-        this.sprite.x + xOffset,
-        this.sprite.y + yOffset,
-        Graphics.items.name,
-        item.data.spriteIndex
-      );
-      itemSprite.setOrigin(0.5, 0.5);
-      itemSprite.setDepth(5);
-      itemSprite.setSize(16, 16);
-      itemSprite.setOffset(0, 0);
-
-      console.log(`Item sprite created at (${itemSprite.x}, ${itemSprite.y}) for ${item.data.name}`);
-
-      // Store the item data on the sprite
-      (itemSprite as any).itemData = item;
-
-      // Add floating animation
-      scene.tweens.add({
-        targets: itemSprite,
-        y: itemSprite.y - 2,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-
-      // Add collision detection with player
-      if (scene instanceof DungeonScene) {
-        console.log(`Setting up collision detection for item: ${item.data.name}`);
-
-        // Add overlap detection
-        scene.physics.add.overlap(
-          scene.player!.sprite,
-          itemSprite,
-          (playerSprite, itemSprite) => {
-            console.log(`COLLISION DETECTED! Player touched item: ${item.data.name}`);
-            this.pickupItem(scene, itemSprite as Phaser.Physics.Arcade.Sprite, item);
-          },
-          undefined,
-          scene
+      if (validPosition) {
+        // Create item sprite at valid position
+        const itemSprite = scene.physics.add.sprite(
+          validPosition.x,
+          validPosition.y,
+          Graphics.items.name,
+          item.data.spriteIndex
         );
+        itemSprite.setOrigin(0.5, 0.5);
+        itemSprite.setDepth(5);
+        itemSprite.setSize(16, 16);
+        itemSprite.setOffset(0, 0);
 
-        console.log(`Collision detection set up for item: ${item.data.name}`);
+        console.log(`Item sprite created at (${itemSprite.x}, ${itemSprite.y}) for ${item.data.name}`);
+
+        // Store the item data on the sprite
+        (itemSprite as any).itemData = item;
+
+        // Add floating animation
+        scene.tweens.add({
+          targets: itemSprite,
+          y: itemSprite.y - 2,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+
+        // Add collision detection with player
+        if (scene instanceof DungeonScene) {
+          console.log(`Setting up collision detection for item: ${item.data.name}`);
+
+          // Add overlap detection
+          scene.physics.add.overlap(
+            scene.player!.sprite,
+            itemSprite,
+            (playerSprite, itemSprite) => {
+              console.log(`COLLISION DETECTED! Player touched item: ${item.data.name}`);
+              this.pickupItem(scene, itemSprite as Phaser.Physics.Arcade.Sprite, item);
+            },
+            undefined,
+            scene
+          );
+
+          console.log(`Collision detection set up for item: ${item.data.name}`);
+        } else {
+          console.log("Scene is not DungeonScene, cannot set up collision");
+        }
       } else {
-        console.log("Scene is not DungeonScene, cannot set up collision");
+        console.log(`Could not find valid floor position for item: ${item.data.name}`);
       }
     }
 
@@ -185,6 +188,18 @@ export default class Slime {
 
     if (player) {
       console.log(`Player found! Adding item to inventory...`);
+
+      // Check if this is a boss key and player already has one
+      if (item.data.id === "boss_key" && player.inventory.hasItem("boss_key")) {
+        console.log(`✗ BLOCKED: Player already has boss key, destroying extra boss key`);
+
+        // Show message that extra boss key was destroyed
+        this.showPickupMessage(scene, itemSprite.x, itemSprite.y, "Extra Boss Key Destroyed", 1);
+
+        // Remove the item sprite
+        itemSprite.destroy();
+        return;
+      }
 
       if (player.addItemToInventory(item)) {
         console.log(`✓ SUCCESS: Added ${item.quantity}x ${item.data.name} to inventory`);
@@ -276,5 +291,65 @@ export default class Slime {
         this.scene.slimeGroup?.add(newSlime.sprite);
       }
     }
+  }
+
+  private findValidFloorPosition(scene: Phaser.Scene): { x: number, y: number } | null {
+    const dungeonScene = scene as DungeonScene;
+    const map = dungeonScene.tilemap;
+
+    if (!map) {
+      console.log("No tilemap found, using original position");
+      return { x: this.sprite.x, y: this.sprite.y };
+    }
+
+    // Convert slime position to tile coordinates
+    const slimeTileX = map.worldToTileX(this.sprite.x);
+    const slimeTileY = map.worldToTileY(this.sprite.y);
+
+    // Check if slime position is on floor
+    if (this.isFloorTile(slimeTileX, slimeTileY, dungeonScene)) {
+      return { x: this.sprite.x, y: this.sprite.y };
+    }
+
+    // Search in expanding radius for floor tiles
+    const maxRadius = 5;
+    for (let radius = 1; radius <= maxRadius; radius++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = -radius; dy <= radius; dy++) {
+          // Only check tiles at the current radius
+          if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+            const checkX = slimeTileX + dx;
+            const checkY = slimeTileY + dy;
+
+            if (this.isFloorTile(checkX, checkY, dungeonScene)) {
+              const worldX = map.tileToWorldX(checkX);
+              const worldY = map.tileToWorldY(checkY);
+              console.log(`Found valid floor position at tile (${checkX}, ${checkY})`);
+              return { x: worldX, y: worldY };
+            }
+          }
+        }
+      }
+    }
+
+    console.log("No valid floor tile found near slime, using original position");
+    return { x: this.sprite.x, y: this.sprite.y };
+  }
+
+  private isFloorTile(tileX: number, tileY: number, dungeonScene: DungeonScene): boolean {
+    // Defensive: check bounds
+    const map = (dungeonScene as any).map; // Use the logical map, not tilemap
+    if (!map) return false;
+    if (
+      tileX < 0 ||
+      tileY < 0 ||
+      tileY >= map.height ||
+      tileX >= map.width
+    ) {
+      return false;
+    }
+    const tile = map.tiles[tileY][tileX];
+    // Adjust this check to your actual TileType enum/values
+    return tile.type === "none" || tile.type === "floor" || tile.type === 0;
   }
 }
