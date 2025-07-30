@@ -80,7 +80,7 @@ export default class Item {
             id: "key",
             name: "Key",
             type: ItemType.KEY,
-            spriteIndex: 1, // Assuming this is the key sprite
+            spriteIndex: 1,
             description: "Opens locked doors",
             stackable: true
         });
@@ -91,7 +91,7 @@ export default class Item {
             id: "boss_key",
             name: "Boss Key",
             type: ItemType.KEY,
-            spriteIndex: 10,
+            spriteIndex: 24,
             description: "Opens boss doors",
             stackable: false,
             maxStack: 1
