@@ -38,23 +38,36 @@ export default class Map {
     // Store the scene reference
     this.scene = scene;
 
-    // Generate dungeon with absolute maximum room size
-    const maxRoomWidth = Math.floor(width * 0.8); // 80% of dungeon width - absolute maximum
-    const maxRoomHeight = Math.floor(height * 0.8); // 80% of dungeon height - absolute maximum
+    // Try multiple generations and pick the one with the largest room
+    let bestDungeon = null;
+    let bestRooms = null;
+    let largestRoomArea = 0;
+    const attempts = 10; // Try 10 times (you can increase for even better results)
 
-    const dungeon = Dungeoneer.build({
-      width: width,
-      height: height,
-      roomAttempts: 5000, // Maximum attempts to get the largest possible room
-      roomSize: {
-        min: { width: 4, height: 4 },
-        max: { width: maxRoomWidth, height: maxRoomHeight }
-      },
-      corridorWidth: 1, // Minimize corridor width to maximize room space
-      removeDeadends: false, // Don't remove deadends to preserve large rooms
-      addStairs: false // Don't add stairs to preserve room space
-    });
-    this.rooms = dungeon.rooms;
+    for (let i = 0; i < attempts; i++) {
+      const dungeon = Dungeoneer.build({
+        width: width,
+        height: height,
+        roomAttempts: 5000,
+        roomSize: {
+          min: { width: 4, height: 4 },
+          max: { width: Math.floor(width * 0.8), height: Math.floor(height * 0.8) }
+        },
+        corridorWidth: 1,
+        removeDeadends: false,
+        addStairs: false
+      });
+      const rooms = dungeon.rooms;
+      const largest = rooms.reduce((max, r) => Math.max(max, r.width * r.height), 0);
+      if (largest > largestRoomArea) {
+        bestDungeon = dungeon;
+        bestRooms = rooms;
+        largestRoomArea = largest;
+      }
+    }
+
+    const dungeon = bestDungeon;
+    this.rooms = bestRooms;
 
     this.width = width;
     this.height = height;
