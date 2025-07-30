@@ -35,27 +35,26 @@ export default class MinimapScene extends Phaser.Scene {
     create() {
         console.log("MinimapScene created!");
 
-        // Get the game's display dimensions for fixed positioning
+        // Create background
         const gameWidth = this.game.scale.width;
-        const gameHeight = this.game.scale.height;
+        const xPos = gameWidth - this.minimapSize - this.padding * 2;
+        const yPos = this.padding * 2;
 
-        // Create minimap background
         this.background = this.add.rectangle(
-            gameWidth - this.minimapSize / 2 - this.padding,
-            this.minimapSize / 2 + this.padding,
-            this.minimapSize,
-            this.minimapSize,
+            xPos - this.padding - 80, // Extra width for legend
+            yPos - this.padding,
+            this.minimapSize + this.padding * 2 + 80, // Extra width for legend
+            this.minimapSize + this.padding * 2,
             this.backgroundColor,
             this.backgroundColorAlpha
         );
-        this.background.setStrokeStyle(this.borderWidth, this.borderColor);
         this.background.setDepth(1000);
 
         // Create title
         this.title = this.add.text(
-            gameWidth - this.minimapSize / 2 - this.padding,
-            this.padding + 15,
-            "MINIMAP",
+            xPos + this.minimapSize / 2,
+            yPos + 15,
+            'MINIMAP',
             {
                 fontSize: '14px',
                 color: '#ffffff',
@@ -65,6 +64,9 @@ export default class MinimapScene extends Phaser.Scene {
         );
         this.title.setOrigin(0.5);
         this.title.setDepth(1001);
+
+        // Create legend to the left of minimap
+        this.createLegend(xPos - 100, yPos + 30);
 
         // Create graphics for drawing the minimap
         this.minimapGraphics = this.add.graphics();
@@ -80,6 +82,43 @@ export default class MinimapScene extends Phaser.Scene {
         this.events.on('updateMinimap', this.updateMinimap, this);
 
         console.log("MinimapScene setup completed");
+    }
+
+    private createLegend(xPos: number, yPos: number): void {
+        const legendItems = [
+            { color: 0xff00ff, label: 'BOSS ROOM' },
+            { color: 0xffaa00, label: 'GOLD LOCKED' },
+            { color: 0xff0000, label: 'LOCKED ROOM' },
+            { color: 0x666666, label: 'NORMAL ROOM' }
+        ];
+
+        const itemHeight = 15;
+        const itemSpacing = 5;
+        const boxSize = 10;
+
+        legendItems.forEach((item, index) => {
+            const itemY = yPos + index * (itemHeight + itemSpacing);
+
+            // Draw color box
+            this.add.rectangle(
+                xPos,
+                itemY + itemHeight / 2,
+                boxSize,
+                boxSize,
+                item.color
+            ).setDepth(1001);
+
+            // Draw label
+            this.add.text(
+                xPos + 15,
+                itemY + itemHeight / 2,
+                item.label,
+                {
+                    fontSize: '10px',
+                    color: '#ffffff'
+                }
+            ).setOrigin(0, 0.5).setDepth(1001);
+        });
     }
 
     private setMap(map: Map) {
@@ -142,6 +181,7 @@ export default class MinimapScene extends Phaser.Scene {
                 room.width * scale,
                 room.height * scale
             );
+
         }
 
         // Draw walls and doors

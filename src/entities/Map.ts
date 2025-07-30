@@ -30,9 +30,21 @@ export default class Map {
   private player: Player | null = null;
 
   constructor(width: number, height: number, scene: DungeonScene) {
+    // Generate dungeon with absolute maximum room size
+    const maxRoomWidth = Math.floor(width * 0.8); // 80% of dungeon width - absolute maximum
+    const maxRoomHeight = Math.floor(height * 0.8); // 80% of dungeon height - absolute maximum
+
     const dungeon = Dungeoneer.build({
       width: width,
-      height: height
+      height: height,
+      roomAttempts: 5000, // Maximum attempts to get the largest possible room
+      roomSize: {
+        min: { width: 4, height: 4 },
+        max: { width: maxRoomWidth, height: maxRoomHeight }
+      },
+      corridorWidth: 1, // Minimize corridor width to maximize room space
+      removeDeadends: false, // Don't remove deadends to preserve large rooms
+      addStairs: false // Don't add stairs to preserve room space
     });
     this.rooms = dungeon.rooms;
 
@@ -372,32 +384,74 @@ export default class Map {
   private determineLockedRooms() {
     const roomCount = this.rooms.length;
 
-    // Filter for rooms that are big enough for torches
+    // Calculate the absolute maximum possible room size for this dungeon
+    const maxPossibleWidth = Math.floor(this.width * 0.8);
+    const maxPossibleHeight = Math.floor(this.height * 0.8);
+    const maxPossibleSize = maxPossibleWidth * maxPossibleHeight;
+
+    // Find the room that is closest to the absolute maximum size
+    let bossRoomIndex = 0;
+    let closestToMaxSize = 0;
+
+    for (let i = 0; i < this.rooms.length; i++) {
+      const room = this.rooms[i];
+      const roomSize = room.width * room.height;
+      const sizeRatio = roomSize / maxPossibleSize;
+
+      if (sizeRatio > closestToMaxSize) {
+        closestToMaxSize = sizeRatio;
+        bossRoomIndex = i;
+      }
+    }
+
+    // Always assign the room closest to maximum size as the boss room
+    this.bossLockedRooms.add(bossRoomIndex);
+
+    // Filter for rooms that are big enough for torches (excluding the boss room)
     const eligibleRooms = this.rooms
       .map((room, index) => ({ room, index }))
-      .filter(({ room }) => room.width >= 6 && room.height >= 6); // Minimum size for locked rooms
+      .filter(({ room, index }) =>
+        room.width >= 6 && room.height >= 6 && index !== bossRoomIndex
+      );
 
-    const eligibleCount = eligibleRooms.length;
-    const normalLockCount = Math.floor(eligibleCount * 0.4); // 30% of eligible rooms
-    const goldLockCount = Math.floor(eligibleCount * 0.1); // 10% of eligible rooms
+    // Ensure we always have at least 1 normal locked room and 1 gold locked room
+    const minNormalLocks = 1;
+    const minGoldLocks = 1;
 
-    // Shuffle eligible rooms
+    // Calculate how many additional rooms we can lock based on available rooms
+    const remainingRooms = eligibleRooms.length;
+    const additionalNormalLocks = Math.max(0, Math.floor(remainingRooms * 0.3)); // 30% of remaining rooms
+    const additionalGoldLocks = Math.max(0, Math.floor(remainingRooms * 0.1)); // 10% of remaining rooms
+
+    const totalNormalLocks = minNormalLocks + additionalNormalLocks;
+    const totalGoldLocks = minGoldLocks + additionalGoldLocks;
+
+    // Shuffle eligible rooms for variety
     for (let i = eligibleRooms.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [eligibleRooms[i], eligibleRooms[j]] = [eligibleRooms[j], eligibleRooms[i]];
     }
 
-    // Always assign 1 boss room first
-    this.bossLockedRooms.add(eligibleRooms[0].index);
+    // Always assign at least 1 normal locked room
+    if (eligibleRooms.length >= 1) {
+      this.lockedRooms.add(eligibleRooms[0].index);
+    }
 
-    // Assign normal locks (skip the first room since it's the boss room)
-    for (let i = 1; i < Math.min(1 + normalLockCount, eligibleRooms.length); i++) {
+    // Always assign at least 1 gold locked room (if we have enough rooms)
+    if (eligibleRooms.length >= 2) {
+      this.goldLockedRooms.add(eligibleRooms[1].index);
+    }
+
+    // Assign additional normal locks (starting from position 2 if we have enough rooms)
+    const startIndex = Math.min(2, eligibleRooms.length);
+    for (let i = startIndex; i < Math.min(startIndex + totalNormalLocks - 1, eligibleRooms.length); i++) {
       this.lockedRooms.add(eligibleRooms[i].index);
     }
 
-    // Assign gold locks (avoiding rooms already assigned)
+    // Assign additional gold locks (avoiding rooms already assigned)
     let goldLocked = 0;
-    for (let i = 1 + normalLockCount; i < eligibleRooms.length && goldLocked < goldLockCount; i++) {
+    const goldStartIndex = startIndex + totalNormalLocks - 1;
+    for (let i = goldStartIndex; i < eligibleRooms.length && goldLocked < totalGoldLocks - 1; i++) {
       this.goldLockedRooms.add(eligibleRooms[i].index);
       goldLocked++;
     }
