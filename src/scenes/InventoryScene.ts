@@ -20,13 +20,13 @@ export default class InventoryScene extends Phaser.Scene {
         const gameWidth = this.game.scale.width;
         const gameHeight = this.game.scale.height;
 
-        // Calculate rectangle size to fit 10 slots
-        const slotSize = 50;
+        // Calculate rectangle size to fit 10 slots (keep original slot size)
+        const slotSize = 50; // Back to original size
         const spacing = 10;
         const slotsPerRow = 10;
         const totalSlotsWidth = slotsPerRow * slotSize + (slotsPerRow - 1) * spacing;
         const barWidth = totalSlotsWidth + 40; // Add padding on sides
-        const barHeight = 80;
+        const barHeight = 80; // Back to original size
 
         // Create bottom bar background
         this.background = this.add.rectangle(
@@ -100,22 +100,22 @@ export default class InventoryScene extends Phaser.Scene {
             const x = startX + i * (slotSize + spacing);
             const y = startY;
 
-            // Create slot background
+
             const slot = this.add.rectangle(x, y, slotSize, slotSize, 0x333333, 0.8);
             slot.setStrokeStyle(2, 0xffffff);
             slot.setDepth(1001);
 
-            // Create item sprite (initially invisible)
+
             const itemSprite = this.add.sprite(x, y, Graphics.items.name, 0);
             itemSprite.setVisible(false);
             itemSprite.setDepth(1002);
+            itemSprite.setScale(3.0); //item scale
 
-            // Create quantity text
             const quantityText = this.add.text(x + 18, y + 18, "", {
                 fontSize: '12px',
                 color: '#ffffff',
                 backgroundColor: '#000000',
-                padding: { x: 3, y: 2 }
+                padding: { x: 4, y: 2 }
             });
             quantityText.setOrigin(0.5);
             quantityText.setDepth(1003);
