@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import Graphics from "../assets/Graphics";
 import Player from "../entities/Player";
+import Item, { ItemType } from "../entities/Item";
 
 export default class InventoryScene extends Phaser.Scene {
     private player: Player | null = null;
@@ -8,6 +9,7 @@ export default class InventoryScene extends Phaser.Scene {
     private itemSlots: Phaser.GameObjects.Rectangle[] = [];
     private itemSprites: Phaser.GameObjects.Sprite[] = [];
     private itemTexts: Phaser.GameObjects.Text[] = [];
+    private hoverTexts: Phaser.GameObjects.Text[] = []; // Add hover text array
 
     constructor() {
         super({ key: "InventoryScene" });
@@ -20,7 +22,7 @@ export default class InventoryScene extends Phaser.Scene {
         const gameWidth = this.game.scale.width;
         const gameHeight = this.game.scale.height;
 
-        // Calculate rectangle size to fit 10 slots (keep original slot size)
+        // Calculate rectangle size to fit 10 slots with larger items
         const slotSize = 50; // Back to original size
         const spacing = 10;
         const slotsPerRow = 10;
@@ -82,13 +84,13 @@ export default class InventoryScene extends Phaser.Scene {
         const gameWidth = this.game.scale.width;
         const gameHeight = this.game.scale.height;
 
-        // Calculate rectangle size to fit 10 slots
-        const slotSize = 50;
+        // Calculate rectangle size to fit 10 slots (keep original slot size)
+        const slotSize = 50; // Back to original size
         const spacing = 10;
         const slotsPerRow = 10;
         const totalSlotsWidth = slotsPerRow * slotSize + (slotsPerRow - 1) * spacing;
         const barWidth = totalSlotsWidth + 40; // Add padding on sides
-        const barHeight = 80;
+        const barHeight = 80; // Back to original size
 
         const barX = gameWidth / 2 - barWidth / 2;
         const barY = gameHeight - 60 - barHeight / 2;
@@ -100,19 +102,20 @@ export default class InventoryScene extends Phaser.Scene {
             const x = startX + i * (slotSize + spacing);
             const y = startY;
 
-
+            // Create slot background (keep original size)
             const slot = this.add.rectangle(x, y, slotSize, slotSize, 0x333333, 0.8);
             slot.setStrokeStyle(2, 0xffffff);
             slot.setDepth(1001);
 
-
+            // Create item sprite (initially invisible) with MUCH larger scale
             const itemSprite = this.add.sprite(x, y, Graphics.items.name, 0);
             itemSprite.setVisible(false);
             itemSprite.setDepth(1002);
-            itemSprite.setScale(3.0); //item scale
+            itemSprite.setScale(3.0); // Much larger scale - items will be 3x bigger
 
-            const quantityText = this.add.text(x + 18, y + 18, "", {
-                fontSize: '12px',
+            // Create quantity text with larger font
+            const quantityText = this.add.text(x + 18, y + 18, "", { // Keep original position
+                fontSize: '12px', // Back to original size
                 color: '#ffffff',
                 backgroundColor: '#000000',
                 padding: { x: 4, y: 2 }
@@ -120,10 +123,22 @@ export default class InventoryScene extends Phaser.Scene {
             quantityText.setOrigin(0.5);
             quantityText.setDepth(1003);
 
+            // Create hover text (initially invisible)
+            const hoverText = this.add.text(x, y - 35, "USE", {
+                fontSize: '14px',
+                color: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 }
+            });
+            hoverText.setOrigin(0.5);
+            hoverText.setDepth(1004);
+            hoverText.setVisible(false);
+
             // Store references
             this.itemSlots.push(slot);
             this.itemSprites.push(itemSprite);
             this.itemTexts.push(quantityText);
+            this.hoverTexts.push(hoverText);
 
             // Make slot interactive
             slot.setInteractive();
@@ -132,14 +147,40 @@ export default class InventoryScene extends Phaser.Scene {
                 this.useItemInSlot(slotIndex);
             });
 
-            // Add hover effect
+            // Add hover effects
             slot.on('pointerover', () => {
                 slot.setFillStyle(0x555555, 0.9);
+
+                // Show "USE" text only for potions
+                const slotIndex = this.itemSlots.indexOf(slot);
+                if (slotIndex < this.itemSprites.length) {
+                    const items = this.player?.inventory.getAllItems() || [];
+                    if (slotIndex < items.length) {
+                        const item = items[slotIndex];
+                        if (this.isPotion(item)) {
+                            this.hoverTexts[slotIndex].setVisible(true);
+                        }
+                    }
+                }
             });
+
             slot.on('pointerout', () => {
                 slot.setFillStyle(0x333333, 0.8);
+
+                // Hide hover text
+                const slotIndex = this.itemSlots.indexOf(slot);
+                if (slotIndex < this.hoverTexts.length) {
+                    this.hoverTexts[slotIndex].setVisible(false);
+                }
             });
         }
+    }
+
+    private isPotion(item: Item): boolean {
+        return item.data.type === ItemType.SPEED_POTION ||
+            item.data.type === ItemType.VISION_POTION ||
+            item.data.type === ItemType.HEALTH_POTION ||
+            item.data.type === ItemType.MANA_POTION;
     }
 
     private updateInventoryDisplay() {
@@ -161,6 +202,9 @@ export default class InventoryScene extends Phaser.Scene {
         });
         this.itemTexts.forEach(text => {
             text.setText("");
+        });
+        this.hoverTexts.forEach(text => {
+            text.setVisible(false);
         });
 
         // Fill slots with items
