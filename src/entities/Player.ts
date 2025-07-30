@@ -39,6 +39,10 @@ export default class Player {
   private scene: Phaser.Scene;
   private facingUp: boolean;
 
+  // Add speed potion properties
+  private speedMultiplier: number = 1;
+  private speedBoostUntil: number = 0;
+
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
     this.sprite = scene.physics.add.sprite(x, y, Graphics.player.name, 0);
@@ -46,7 +50,7 @@ export default class Player {
     this.sprite.setOffset(20, 28);
     this.sprite.anims.play(Graphics.player.animations.idle.key);
     this.facingUp = false;
-    this.sprite.setDepth(5);
+    this.sprite.setDepth(15); // Increased from 5 to 15 to be above chests
 
     // Initialize inventory
     this.inventory = new Inventory();
@@ -131,9 +135,30 @@ export default class Player {
         console.log("Used mana potion!");
         this.inventory.removeItem(itemId, 1);
         return true;
+      case "speed_potion":
+        // Apply speed boost for 30 seconds
+        console.log("Used speed potion! Speed increased by 2x for 30 seconds!");
+        this.speedMultiplier = 2;
+        this.speedBoostUntil = this.time + 30000; // 30 seconds
+        this.inventory.removeItem(itemId, 1);
+
+        // Emit event to notify scene about speed boost
+        this.scene.events.emit('speedBoostActivated', { duration: 30000 });
+        return true;
       default:
         return false;
     }
+  }
+
+  // Add getter for speed boost status
+  getSpeedBoostStatus(): { active: boolean; remainingTime: number } {
+    if (this.speedBoostUntil > 0 && this.time < this.speedBoostUntil) {
+      return {
+        active: true,
+        remainingTime: Math.ceil((this.speedBoostUntil - this.time) / 1000)
+      };
+    }
+    return { active: false, remainingTime: 0 };
   }
 
   hasKey(): boolean {
@@ -192,6 +217,17 @@ export default class Player {
 
   update(time: number) {
     this.time = time;
+
+    // Check if speed boost has expired
+    if (this.speedBoostUntil > 0 && time > this.speedBoostUntil) {
+      this.speedMultiplier = 1;
+      this.speedBoostUntil = 0;
+      console.log("Speed boost expired!");
+
+      // Emit event to notify scene about speed boost ending
+      this.scene.events.emit('speedBoostExpired');
+    }
+
     const keys = this.keys;
     let attackAnim = "";
     let moveAnim = "";
@@ -229,18 +265,21 @@ export default class Player {
     const up = keys.up.isDown || keys.w.isDown;
     const down = keys.down.isDown || keys.s.isDown;
 
+    // Apply speed multiplier to movement
+    const currentSpeed = speed * this.speedMultiplier;
+
     if (!this.body.blocked.left && left) {
-      this.body.setVelocityX(-speed);
+      this.body.setVelocityX(-currentSpeed);
       this.sprite.setFlipX(true);
     } else if (!this.body.blocked.right && right) {
-      this.body.setVelocityX(speed);
+      this.body.setVelocityX(currentSpeed);
       this.sprite.setFlipX(false);
     }
 
     if (!this.body.blocked.up && up) {
-      this.body.setVelocityY(-speed);
+      this.body.setVelocityY(-currentSpeed);
     } else if (!this.body.blocked.down && down) {
-      this.body.setVelocityY(speed);
+      this.body.setVelocityY(currentSpeed);
     }
 
     if (left || right) {
@@ -278,7 +317,7 @@ export default class Player {
 
     this.attacking = false;
     this.sprite.anims.play(moveAnim, true);
-    this.body.velocity.normalize().scale(speed);
+    this.body.velocity.normalize().scale(currentSpeed);
     this.sprite.setBlendMode(Phaser.BlendModes.NORMAL);
     if (this.emitter.on) {
       this.emitter.stop();

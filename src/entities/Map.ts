@@ -4,6 +4,7 @@ import Slime from "./Slime";
 import Graphics from "../assets/Graphics";
 import DungeonScene from "../scenes/DungeonScene";
 import Player from "./Player";
+import Chest from "./Chest";
 
 export default class Map {
   public readonly tiles: Tile[][];
@@ -18,8 +19,12 @@ export default class Map {
   public readonly startingY: number;
 
   public readonly slimes: Slime[];
+  public readonly chests: Chest[] = [];
 
   public readonly rooms: Dungeoneer.Room[];
+
+  // Add scene property
+  private scene: DungeonScene;
 
   // Add room locking properties
   private lockedRooms: Set<number> = new Set();
@@ -30,6 +35,9 @@ export default class Map {
   private player: Player | null = null;
 
   constructor(width: number, height: number, scene: DungeonScene) {
+    // Store the scene reference
+    this.scene = scene;
+
     // Generate dungeon with absolute maximum room size
     const maxRoomWidth = Math.floor(width * 0.8); // 80% of dungeon width - absolute maximum
     const maxRoomHeight = Math.floor(height * 0.8); // 80% of dungeon height - absolute maximum
@@ -116,8 +124,10 @@ export default class Map {
       );
 
     this.slimes = [];
+    this.chests = [];
 
-    for (let room of dungeon.rooms) {
+    for (let roomIndex = 0; roomIndex < dungeon.rooms.length; roomIndex++) {
+      const room = dungeon.rooms[roomIndex];
       groundLayer.randomize(
         room.x - 1,
         room.y - 1,
@@ -131,7 +141,6 @@ export default class Map {
       }
 
       // Check if this room is locked
-      const roomIndex = this.rooms.indexOf(room);
       const isLocked = this.lockedRooms.has(roomIndex);
       const isGoldLocked = this.goldLockedRooms.has(roomIndex);
       const isBossRoom = this.bossLockedRooms.has(roomIndex);
@@ -141,6 +150,14 @@ export default class Map {
         room.x + room.width - 1,
         room.y + room.height - 1
       );
+
+      // Spawn chest in normal rooms
+      if (!isLocked && !isGoldLocked && !isBossRoom) {
+        console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
+        this.placeChestInRoom(room, roomTL, roomBounds);
+      } else {
+        console.log(`Room ${roomIndex} is locked - no chest placed`);
+      }
 
       // Increase slime count based on room type
       let numSlimes: number;
@@ -732,5 +749,14 @@ export default class Map {
 
   public getBossLockedRooms(): Set<number> {
     return this.bossLockedRooms;
+  }
+
+  private placeChestInRoom(room: Dungeoneer.Room, roomTL: { x: number, y: number }, roomBounds: { x: number, y: number }) {
+    const chestX = Phaser.Math.Between(roomTL.x, roomBounds.x);
+    const chestY = Phaser.Math.Between(roomTL.y, roomBounds.y);
+    const chest = new Chest(chestX, chestY, this.scene);
+
+    console.log(`Created chest at world position (${chestX}, ${chestY})`);
+    this.chests.push(chest);
   }
 }
