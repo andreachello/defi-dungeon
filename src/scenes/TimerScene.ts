@@ -16,6 +16,11 @@ export default class TimerScene extends Phaser.Scene {
     private visionCountdownText: Phaser.GameObjects.Text;
     private visionTimerText: Phaser.GameObjects.Text;
 
+    // Game timer properties
+    private gameTimerBackground: Phaser.GameObjects.Rectangle;
+    private gameTimerText: Phaser.GameObjects.Text;
+    private gameTimerIcon: Phaser.GameObjects.Sprite;
+
     // Timer configuration
     private readonly timerWidth = 250;
     private readonly timerHeight = 60;
@@ -23,7 +28,8 @@ export default class TimerScene extends Phaser.Scene {
     private readonly backgroundColor = 0x000000;
     private readonly backgroundColorAlpha = 0.9;
     private readonly borderColor = 0x00ff00;
-    private readonly visionBorderColor = 0x0000ff; // Blue for vision
+    private readonly visionBorderColor = 0x0000ff;
+    private readonly gameTimerBorderColor = 0xff0000;
     private readonly borderWidth = 2;
 
     // Countdown properties
@@ -38,6 +44,12 @@ export default class TimerScene extends Phaser.Scene {
     private lastVisionSeconds: number = 0;
     private visionUpdateTimer: Phaser.Time.TimerEvent | null = null;
 
+    // Game timer properties
+    private gameStartTime: number = 0;
+    private gameDuration: number = 5 * 60 * 1000; // 5 minutes in milliseconds
+    private lastGameSeconds: number = 0;
+    private gameUpdateTimer: Phaser.Time.TimerEvent | null = null;
+
     constructor() {
         super({ key: "TimerScene" });
     }
@@ -45,10 +57,13 @@ export default class TimerScene extends Phaser.Scene {
     create() {
         console.log("TimerScene created!");
 
-        // Create speed boost timer
+        // Create game timer first (top left)
+        this.createGameTimer();
+
+        // Create speed boost timer (below game timer)
         this.createSpeedBoostTimer();
 
-        // Create vision boost timer
+        // Create vision boost timer (below speed boost timer)
         this.createVisionBoostTimer();
 
         // Listen for player reference updates and boost events
@@ -58,12 +73,73 @@ export default class TimerScene extends Phaser.Scene {
         this.events.on('visionBoostActivated', this.onVisionBoostActivated, this);
         this.events.on('visionBoostExpired', this.onVisionBoostExpired, this);
 
+        // Start game timer
+        this.startGameTimer();
+
         console.log("TimerScene setup completed");
+    }
+
+    private createGameTimer() {
+        const xPos = this.padding * 2;
+        const yPos = this.padding * 2; // Top left position
+
+        this.gameTimerBackground = this.add.rectangle(
+            xPos,
+            yPos,
+            this.timerWidth,
+            this.timerHeight,
+            this.backgroundColor,
+            this.backgroundColorAlpha
+        );
+        this.gameTimerBackground.setDepth(1000);
+        this.gameTimerBackground.setVisible(true);
+
+        this.gameTimerIcon = this.add.sprite(
+            xPos + 30,
+            yPos + this.timerHeight / 2,
+            'items',
+            0
+        );
+        this.gameTimerIcon.setScale(1.2);
+        this.gameTimerIcon.setDepth(1001);
+        this.gameTimerIcon.setVisible(true);
+
+        this.gameTimerText = this.add.text(
+            xPos + 70,
+            yPos + this.timerHeight / 2,
+            'GAME TIME',
+            {
+                fontSize: '14px',
+                color: '#ff0000',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 }
+            }
+        );
+        this.gameTimerText.setOrigin(0, 0.5);
+        this.gameTimerText.setDepth(1001);
+        this.gameTimerText.setVisible(true);
+
+        // Create countdown text for game timer
+        const gameCountdownText = this.add.text(
+            xPos + 180,
+            yPos + this.timerHeight / 2,
+            '5:00',
+            {
+                fontSize: '20px',
+                color: '#ff0000',
+                backgroundColor: '#000000',
+                padding: { x: 8, y: 4 }
+            }
+        );
+        gameCountdownText.setOrigin(0, 0.5);
+        gameCountdownText.setDepth(1001);
+        gameCountdownText.setVisible(true);
+        this.gameTimerText = gameCountdownText; // Store reference
     }
 
     private createSpeedBoostTimer() {
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2;
+        const yPos = this.padding * 2 + this.timerHeight + 10; // Below game timer
 
         this.background = this.add.rectangle(
             xPos,
@@ -134,7 +210,7 @@ export default class TimerScene extends Phaser.Scene {
 
     private createVisionBoostTimer() {
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + this.timerHeight + 10; // Below speed boost timer
+        const yPos = this.padding * 2 + (this.timerHeight + 10) * 2; // Below speed boost timer
 
         this.visionBackground = this.add.rectangle(
             xPos,
@@ -151,7 +227,7 @@ export default class TimerScene extends Phaser.Scene {
             xPos + 30,
             yPos + this.timerHeight / 2,
             'items',
-            4 // Vision potion sprite index
+            4
         );
         this.visionIcon.setScale(1.2);
         this.visionIcon.setDepth(1001);
@@ -201,6 +277,86 @@ export default class TimerScene extends Phaser.Scene {
         this.visionTimerText.setOrigin(0, 0.5);
         this.visionTimerText.setDepth(1001);
         this.visionTimerText.setVisible(false);
+    }
+
+    private startGameTimer() {
+        this.gameStartTime = this.time.now;
+        this.lastGameSeconds = Math.ceil(this.gameDuration / 1000);
+
+        this.gameUpdateTimer = this.time.addEvent({
+            delay: 1000,
+            callback: this.updateGameTimer,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    private updateGameTimer() {
+        const currentTime = this.time.now;
+        const elapsedTime = currentTime - this.gameStartTime;
+        const remainingTime = Math.max(0, this.gameDuration - elapsedTime);
+        const remainingSeconds = Math.ceil(remainingTime / 1000);
+
+        if (remainingSeconds > 0) {
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            if (this.gameTimerText) {
+                this.gameTimerText.setText(timeString);
+
+                // Add visual feedback for last 30 seconds
+                if (remainingSeconds <= 30) {
+                    this.gameTimerText.setColor('#ff0000');
+                    this.gameTimerText.setScale(1.2);
+                } else {
+                    this.gameTimerText.setColor('#ff0000');
+                    this.gameTimerText.setScale(1.0);
+                }
+            }
+        } else {
+            // Game over!
+            this.endGame();
+        }
+    }
+
+    private endGame() {
+        console.log("Game Over! Time's up!");
+
+        // Stop all timers
+        if (this.gameUpdateTimer) {
+            this.gameUpdateTimer.destroy();
+        }
+        if (this.updateTimer) {
+            this.updateTimer.destroy();
+        }
+        if (this.visionUpdateTimer) {
+            this.visionUpdateTimer.destroy();
+        }
+
+        // Show game over message
+        const gameWidth = this.game.scale.width;
+        const gameHeight = this.game.scale.height;
+
+        const gameOverText = this.add.text(
+            gameWidth / 2,
+            gameHeight / 2,
+            'GAME OVER\nTime\'s Up!',
+            {
+                fontSize: '32px',
+                color: '#ff0000',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 },
+                align: 'center'
+            }
+        );
+        gameOverText.setOrigin(0.5);
+        gameOverText.setDepth(3000);
+
+        // Stop the game after 3 seconds
+        this.time.delayedCall(3000, () => {
+            console.log("Game ended due to time limit");
+        });
     }
 
     private setPlayer(player: Player) {
