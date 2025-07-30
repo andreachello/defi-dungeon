@@ -260,6 +260,22 @@ export default class DungeonScene extends Phaser.Scene {
     this.events.on('speedBoostExpired', () => {
       this.scene.get("TimerScene").events.emit('speedBoostExpired');
     });
+
+    // Listen for vision boost events and forward them to timer scene
+    this.events.on('visionBoostActivated', (data) => {
+      this.scene.get("TimerScene").events.emit('visionBoostActivated', data);
+      // Remove FOV layer completely
+      if (this.fov) {
+        this.fov.setVisionBoost(true);
+      }
+    });
+    this.events.on('visionBoostExpired', () => {
+      this.scene.get("TimerScene").events.emit('visionBoostExpired');
+      // Restore FOV layer
+      if (this.fov) {
+        this.fov.setVisionBoost(false);
+      }
+    });
   }
 
   // Remove the timer-related methods since they're now in TimerScene
@@ -295,6 +311,9 @@ export default class DungeonScene extends Phaser.Scene {
 
     // Notify inventory scene to update if needed
     // The inventory scene will handle its own updates
+
+    // Update FOV radius if vision boost is active
+    // The FOV layer will handle its own visibility based on vision boost status
   }
 
   // Add the missing playerChestCollide method

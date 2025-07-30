@@ -3,7 +3,7 @@ import DungeonMap from "../entities/Map";
 import { Mrpas } from "mrpas";
 import Phaser from "phaser";
 
-const radius = 7;
+const baseRadius = 7;
 const fogAlpha = 0.8;
 
 const lightDropoff = [0.7, 0.6, 0.3, 0.1];
@@ -34,6 +34,8 @@ export default class FOVLayer {
   private mrpas: Mrpas | undefined;
   private lastPos: Phaser.Math.Vector2;
   private map: DungeonMap;
+  private currentRadius: number = baseRadius;
+  private visionBoostActive: boolean = false;
 
   constructor(map: DungeonMap) {
     const utilTiles = map.tilemap.addTilesetImage("util");
@@ -59,11 +61,36 @@ export default class FOVLayer {
     );
   }
 
+  // Add method to set vision radius
+  setVisionRadius(radius: number) {
+    this.currentRadius = radius;
+    console.log(`Vision radius set to: ${radius}`);
+  }
+
+  // Add method to toggle vision boost
+  setVisionBoost(active: boolean) {
+    this.visionBoostActive = active;
+    console.log(`Vision boost ${active ? 'activated' : 'deactivated'}`);
+
+    if (active) {
+      // Hide the FOV layer completely
+      this.layer.setVisible(false);
+    } else {
+      // Show the FOV layer again
+      this.layer.setVisible(true);
+    }
+  }
+
   update(
     pos: Phaser.Math.Vector2,
     bounds: Phaser.Geom.Rectangle,
     delta: number
   ) {
+    // If vision boost is active, don't update the FOV layer
+    if (this.visionBoostActive) {
+      return;
+    }
+
     if (!this.lastPos.equals(pos)) {
       this.updateMRPAS(pos);
       this.lastPos = pos.clone();
@@ -82,7 +109,7 @@ export default class FOVLayer {
   }
 
   updateMRPAS(pos: Phaser.Math.Vector2) {
-    // TODO: performance?
+    // Reset all tiles to fog for visited areas
     for (let row of this.map.tiles) {
       for (let tile of row) {
         if (tile.seen) {
@@ -91,10 +118,11 @@ export default class FOVLayer {
       }
     }
 
+    // Single computation with current radius
     this.mrpas!.compute(
       pos.x,
       pos.y,
-      radius,
+      this.currentRadius,
       (x: number, y: number) => this.map.tiles[y][x].seen,
       (x: number, y: number) => {
         const distance = Math.floor(
@@ -103,7 +131,7 @@ export default class FOVLayer {
           )
         );
 
-        const rolloffIdx = distance <= radius ? radius - distance : 0;
+        const rolloffIdx = distance <= this.currentRadius ? this.currentRadius - distance : 0;
         const alpha =
           rolloffIdx < lightDropoff.length ? lightDropoff[rolloffIdx] : 0;
         this.map.tiles[y][x].desiredAlpha = alpha;

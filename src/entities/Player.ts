@@ -43,6 +43,10 @@ export default class Player {
   private speedMultiplier: number = 1;
   private speedBoostUntil: number = 0;
 
+  // Add vision potion properties
+  private visionMultiplier: number = 1;
+  private visionBoostUntil: number = 0;
+
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
     this.sprite = scene.physics.add.sprite(x, y, Graphics.player.name, 0);
@@ -145,6 +149,16 @@ export default class Player {
         // Emit event to notify scene about speed boost
         this.scene.events.emit('speedBoostActivated', { duration: 30000 });
         return true;
+      case "vision_potion":
+        // Apply vision boost for 30 seconds
+        console.log("Used vision potion! Vision increased by 2x for 30 seconds!");
+        this.visionMultiplier = 2;
+        this.visionBoostUntil = this.time + 2000; // 2 seconds
+        this.inventory.removeItem(itemId, 1);
+
+        // Emit event to notify scene about vision boost
+        this.scene.events.emit('visionBoostActivated', { duration: 2000 });
+        return true;
       default:
         return false;
     }
@@ -159,6 +173,23 @@ export default class Player {
       };
     }
     return { active: false, remainingTime: 0 };
+  }
+
+  // Add getter for vision boost status
+  getVisionBoostStatus(): { active: boolean; remainingTime: number } {
+    if (this.visionBoostUntil > 0 && this.time < this.visionBoostUntil) {
+      return {
+        active: true,
+        remainingTime: Math.ceil((this.visionBoostUntil - this.time) / 1000)
+      };
+    }
+    return { active: false, remainingTime: 0 };
+  }
+
+  // Add getter for current vision radius
+  getVisionRadius(): number {
+    const baseRadius = 7;
+    return Math.floor(baseRadius * this.visionMultiplier);
   }
 
   hasKey(): boolean {
@@ -226,6 +257,16 @@ export default class Player {
 
       // Emit event to notify scene about speed boost ending
       this.scene.events.emit('speedBoostExpired');
+    }
+
+    // Check if vision boost has expired
+    if (this.visionBoostUntil > 0 && time > this.visionBoostUntil) {
+      this.visionMultiplier = 1;
+      this.visionBoostUntil = 0;
+      console.log("Vision boost expired!");
+
+      // Emit event to notify scene about vision boost ending
+      this.scene.events.emit('visionBoostExpired');
     }
 
     const keys = this.keys;

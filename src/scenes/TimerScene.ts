@@ -9,13 +9,21 @@ export default class TimerScene extends Phaser.Scene {
     private speedIcon: Phaser.GameObjects.Sprite;
     private countdownText: Phaser.GameObjects.Text;
 
+    // Vision boost properties
+    private visionBackground: Phaser.GameObjects.Rectangle;
+    private visionTitle: Phaser.GameObjects.Text;
+    private visionIcon: Phaser.GameObjects.Sprite;
+    private visionCountdownText: Phaser.GameObjects.Text;
+    private visionTimerText: Phaser.GameObjects.Text;
+
     // Timer configuration
-    private readonly timerWidth = 250; // Increased width for side-by-side layout
-    private readonly timerHeight = 60; // Reduced height since we're using one row
+    private readonly timerWidth = 250;
+    private readonly timerHeight = 60;
     private readonly padding = 15;
     private readonly backgroundColor = 0x000000;
     private readonly backgroundColorAlpha = 0.9;
     private readonly borderColor = 0x00ff00;
+    private readonly visionBorderColor = 0x0000ff; // Blue for vision
     private readonly borderWidth = 2;
 
     // Countdown properties
@@ -24,6 +32,12 @@ export default class TimerScene extends Phaser.Scene {
     private lastDisplayedSeconds: number = 0;
     private updateTimer: Phaser.Time.TimerEvent | null = null;
 
+    // Vision boost properties
+    private visionBoostStartTime: number = 0;
+    private visionBoostDuration: number = 0;
+    private lastVisionSeconds: number = 0;
+    private visionUpdateTimer: Phaser.Time.TimerEvent | null = null;
+
     constructor() {
         super({ key: "TimerScene" });
     }
@@ -31,7 +45,23 @@ export default class TimerScene extends Phaser.Scene {
     create() {
         console.log("TimerScene created!");
 
-        // Create background
+        // Create speed boost timer
+        this.createSpeedBoostTimer();
+
+        // Create vision boost timer
+        this.createVisionBoostTimer();
+
+        // Listen for player reference updates and boost events
+        this.events.on('setPlayer', this.setPlayer, this);
+        this.events.on('speedBoostActivated', this.onSpeedBoostActivated, this);
+        this.events.on('speedBoostExpired', this.onSpeedBoostExpired, this);
+        this.events.on('visionBoostActivated', this.onVisionBoostActivated, this);
+        this.events.on('visionBoostExpired', this.onVisionBoostExpired, this);
+
+        console.log("TimerScene setup completed");
+    }
+
+    private createSpeedBoostTimer() {
         const xPos = this.padding * 2;
         const yPos = this.padding * 2;
 
@@ -46,20 +76,18 @@ export default class TimerScene extends Phaser.Scene {
         this.background.setDepth(1000);
         this.background.setVisible(false);
 
-        // Create speed icon (larger size)
         this.speedIcon = this.add.sprite(
             xPos + 30,
             yPos + this.timerHeight / 2,
             'items',
             3
         );
-        this.speedIcon.setScale(1.2); // Increased from 0.8 to 1.2
+        this.speedIcon.setScale(1.2);
         this.speedIcon.setDepth(1001);
         this.speedIcon.setVisible(false);
 
-        // Create title (SPEED BOOST) - positioned to the right of the icon
         this.title = this.add.text(
-            xPos + 50, // Positioned after the icon
+            xPos + 70,
             yPos + this.timerHeight / 2,
             'SPEED BOOST',
             {
@@ -69,13 +97,12 @@ export default class TimerScene extends Phaser.Scene {
                 padding: { x: 6, y: 3 }
             }
         );
-        this.title.setOrigin(0, 0.5); // Left-aligned
+        this.title.setOrigin(0, 0.5);
         this.title.setDepth(1001);
         this.title.setVisible(false);
 
-        // Create countdown text (number) - positioned to the right of "SPEED BOOST"
         this.countdownText = this.add.text(
-            xPos + 160, // Positioned after "SPEED BOOST"
+            xPos + 180,
             yPos + this.timerHeight / 2,
             '30',
             {
@@ -85,13 +112,12 @@ export default class TimerScene extends Phaser.Scene {
                 padding: { x: 8, y: 4 }
             }
         );
-        this.countdownText.setOrigin(0, 0.5); // Left-aligned
+        this.countdownText.setOrigin(0, 0.5);
         this.countdownText.setDepth(1001);
         this.countdownText.setVisible(false);
 
-        // Create timer text (smaller, for seconds label) - positioned below the countdown
         this.timerText = this.add.text(
-            xPos + 160, // Same x position as countdown
+            xPos + 180,
             yPos + this.timerHeight - 8,
             's',
             {
@@ -101,16 +127,80 @@ export default class TimerScene extends Phaser.Scene {
                 padding: { x: 2, y: 1 }
             }
         );
-        this.timerText.setOrigin(0, 0.5); // Left-aligned
+        this.timerText.setOrigin(0, 0.5);
         this.timerText.setDepth(1001);
         this.timerText.setVisible(false);
+    }
 
-        // Listen for player reference updates and speed boost events
-        this.events.on('setPlayer', this.setPlayer, this);
-        this.events.on('speedBoostActivated', this.onSpeedBoostActivated, this);
-        this.events.on('speedBoostExpired', this.onSpeedBoostExpired, this);
+    private createVisionBoostTimer() {
+        const xPos = this.padding * 2;
+        const yPos = this.padding * 2 + this.timerHeight + 10; // Below speed boost timer
 
-        console.log("TimerScene setup completed");
+        this.visionBackground = this.add.rectangle(
+            xPos,
+            yPos,
+            this.timerWidth,
+            this.timerHeight,
+            this.backgroundColor,
+            this.backgroundColorAlpha
+        );
+        this.visionBackground.setDepth(1000);
+        this.visionBackground.setVisible(false);
+
+        this.visionIcon = this.add.sprite(
+            xPos + 30,
+            yPos + this.timerHeight / 2,
+            'items',
+            4 // Vision potion sprite index
+        );
+        this.visionIcon.setScale(1.2);
+        this.visionIcon.setDepth(1001);
+        this.visionIcon.setVisible(false);
+
+        this.visionTitle = this.add.text(
+            xPos + 70,
+            yPos + this.timerHeight / 2,
+            'VISION BOOST',
+            {
+                fontSize: '14px',
+                color: '#0000ff',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 }
+            }
+        );
+        this.visionTitle.setOrigin(0, 0.5);
+        this.visionTitle.setDepth(1001);
+        this.visionTitle.setVisible(false);
+
+        this.visionCountdownText = this.add.text(
+            xPos + 180,
+            yPos + this.timerHeight / 2,
+            '30',
+            {
+                fontSize: '20px',
+                color: '#0000ff',
+                backgroundColor: '#000000',
+                padding: { x: 8, y: 4 }
+            }
+        );
+        this.visionCountdownText.setOrigin(0, 0.5);
+        this.visionCountdownText.setDepth(1001);
+        this.visionCountdownText.setVisible(false);
+
+        this.visionTimerText = this.add.text(
+            xPos + 180,
+            yPos + this.timerHeight - 8,
+            's',
+            {
+                fontSize: '10px',
+                color: '#0000ff',
+                backgroundColor: '#000000',
+                padding: { x: 2, y: 1 }
+            }
+        );
+        this.visionTimerText.setOrigin(0, 0.5);
+        this.visionTimerText.setDepth(1001);
+        this.visionTimerText.setVisible(false);
     }
 
     private setPlayer(player: Player) {
@@ -124,16 +214,15 @@ export default class TimerScene extends Phaser.Scene {
         this.speedBoostDuration = data.duration;
         this.lastDisplayedSeconds = Math.ceil(data.duration / 1000);
 
-        this.showTimer();
-        this.updateCountdownDisplay();
+        this.showSpeedTimer();
+        this.updateSpeedCountdownDisplay();
 
-        // Start a timer that updates every second
         if (this.updateTimer) {
             this.updateTimer.destroy();
         }
         this.updateTimer = this.time.addEvent({
-            delay: 1000, // Update every 1000ms (1 second)
-            callback: this.updateCountdownDisplay,
+            delay: 1000,
+            callback: this.updateSpeedCountdownDisplay,
             callbackScope: this,
             loop: true
         });
@@ -141,16 +230,45 @@ export default class TimerScene extends Phaser.Scene {
 
     private onSpeedBoostExpired() {
         console.log("Speed boost expired in TimerScene!");
-        this.hideTimer();
+        this.hideSpeedTimer();
 
-        // Stop the update timer
         if (this.updateTimer) {
             this.updateTimer.destroy();
             this.updateTimer = null;
         }
     }
 
-    private showTimer() {
+    private onVisionBoostActivated(data: { duration: number }) {
+        console.log("Vision boost activated in TimerScene! Duration:", data.duration);
+        this.visionBoostStartTime = this.time.now;
+        this.visionBoostDuration = data.duration;
+        this.lastVisionSeconds = Math.ceil(data.duration / 1000);
+
+        this.showVisionTimer();
+        this.updateVisionCountdownDisplay();
+
+        if (this.visionUpdateTimer) {
+            this.visionUpdateTimer.destroy();
+        }
+        this.visionUpdateTimer = this.time.addEvent({
+            delay: 1000,
+            callback: this.updateVisionCountdownDisplay,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    private onVisionBoostExpired() {
+        console.log("Vision boost expired in TimerScene!");
+        this.hideVisionTimer();
+
+        if (this.visionUpdateTimer) {
+            this.visionUpdateTimer.destroy();
+            this.visionUpdateTimer = null;
+        }
+    }
+
+    private showSpeedTimer() {
         if (this.background) this.background.setVisible(true);
         if (this.title) this.title.setVisible(true);
         if (this.speedIcon) this.speedIcon.setVisible(true);
@@ -158,7 +276,7 @@ export default class TimerScene extends Phaser.Scene {
         if (this.timerText) this.timerText.setVisible(true);
     }
 
-    private hideTimer() {
+    private hideSpeedTimer() {
         if (this.background) this.background.setVisible(false);
         if (this.title) this.title.setVisible(false);
         if (this.speedIcon) this.speedIcon.setVisible(false);
@@ -166,46 +284,90 @@ export default class TimerScene extends Phaser.Scene {
         if (this.timerText) this.timerText.setVisible(false);
     }
 
-    private updateCountdownDisplay() {
+    private showVisionTimer() {
+        if (this.visionBackground) this.visionBackground.setVisible(true);
+        if (this.visionTitle) this.visionTitle.setVisible(true);
+        if (this.visionIcon) this.visionIcon.setVisible(true);
+        if (this.visionCountdownText) this.visionCountdownText.setVisible(true);
+        if (this.visionTimerText) this.visionTimerText.setVisible(true);
+    }
+
+    private hideVisionTimer() {
+        if (this.visionBackground) this.visionBackground.setVisible(false);
+        if (this.visionTitle) this.visionTitle.setVisible(false);
+        if (this.visionIcon) this.visionIcon.setVisible(false);
+        if (this.visionCountdownText) this.visionCountdownText.setVisible(false);
+        if (this.visionTimerText) this.visionTimerText.setVisible(false);
+    }
+
+    private updateSpeedCountdownDisplay() {
         if (!this.countdownText) return;
 
-        // Calculate remaining time using real clock
         const currentTime = this.time.now;
         const elapsedTime = currentTime - this.speedBoostStartTime;
         const remainingTime = Math.max(0, this.speedBoostDuration - elapsedTime);
         const remainingSeconds = Math.ceil(remainingTime / 1000);
 
-        console.log(`Current time: ${currentTime}, Start time: ${this.speedBoostStartTime}, Elapsed: ${elapsedTime}, Remaining: ${remainingTime}, Seconds: ${remainingSeconds}`);
-
         if (remainingSeconds > 0) {
-            // Update display if the seconds have changed
             if (remainingSeconds !== this.lastDisplayedSeconds) {
-                console.log(`Countdown: ${this.lastDisplayedSeconds} -> ${remainingSeconds}`);
+                console.log(`Speed countdown: ${this.lastDisplayedSeconds} -> ${remainingSeconds}`);
                 this.lastDisplayedSeconds = remainingSeconds;
                 this.countdownText.setText(remainingSeconds.toString());
 
-                // Add visual feedback for last 5 seconds
                 if (remainingSeconds <= 5) {
-                    this.countdownText.setColor('#ff0000'); // Red for last 5 seconds
-                    this.countdownText.setScale(1.2); // Slightly larger
+                    this.countdownText.setColor('#ff0000');
+                    this.countdownText.setScale(1.2);
                 } else {
-                    this.countdownText.setColor('#00ff00'); // Green for normal time
-                    this.countdownText.setScale(1.0); // Normal size
+                    this.countdownText.setColor('#00ff00');
+                    this.countdownText.setScale(1.0);
                 }
             }
 
-            // Show timer if not already visible
             if (!this.background?.visible) {
-                this.showTimer();
+                this.showSpeedTimer();
             }
         } else {
-            // Hide timer when countdown reaches 0
-            this.hideTimer();
+            this.hideSpeedTimer();
 
-            // Stop the update timer
             if (this.updateTimer) {
                 this.updateTimer.destroy();
                 this.updateTimer = null;
+            }
+        }
+    }
+
+    private updateVisionCountdownDisplay() {
+        if (!this.visionCountdownText) return;
+
+        const currentTime = this.time.now;
+        const elapsedTime = currentTime - this.visionBoostStartTime;
+        const remainingTime = Math.max(0, this.visionBoostDuration - elapsedTime);
+        const remainingSeconds = Math.ceil(remainingTime / 1000);
+
+        if (remainingSeconds > 0) {
+            if (remainingSeconds !== this.lastVisionSeconds) {
+                console.log(`Vision countdown: ${this.lastVisionSeconds} -> ${remainingSeconds}`);
+                this.lastVisionSeconds = remainingSeconds;
+                this.visionCountdownText.setText(remainingSeconds.toString());
+
+                if (remainingSeconds <= 5) {
+                    this.visionCountdownText.setColor('#ff0000');
+                    this.visionCountdownText.setScale(1.2);
+                } else {
+                    this.visionCountdownText.setColor('#0000ff');
+                    this.visionCountdownText.setScale(1.0);
+                }
+            }
+
+            if (!this.visionBackground?.visible) {
+                this.showVisionTimer();
+            }
+        } else {
+            this.hideVisionTimer();
+
+            if (this.visionUpdateTimer) {
+                this.visionUpdateTimer.destroy();
+                this.visionUpdateTimer = null;
             }
         }
     }
