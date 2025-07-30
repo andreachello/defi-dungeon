@@ -29,9 +29,7 @@ export default class DungeonScene extends Phaser.Scene {
   private inventorySprites: Phaser.GameObjects.Sprite[] = [];
   private inventoryTexts: Phaser.GameObjects.Text[] = [];
 
-  // Speed boost timer properties
-  private speedBoostTimer?: Phaser.GameObjects.Text;
-  private speedBoostBackground?: Phaser.GameObjects.Rectangle;
+  // Remove the timer properties since we're using a separate scene
 
   preload(): void {
     this.load.spritesheet(Graphics.environment.name, Graphics.environment.file, {
@@ -229,8 +227,14 @@ export default class DungeonScene extends Phaser.Scene {
     // Launch minimap scene in parallel
     this.scene.launch("MinimapScene");
 
+    // Launch timer scene in parallel
+    this.scene.launch("TimerScene");
+
     // Pass player reference to inventory scene
     this.scene.get("InventoryScene").events.emit('setPlayer', this.player);
+
+    // Pass player reference to timer scene
+    this.scene.get("TimerScene").events.emit('setPlayer', this.player);
 
     // Pass map and player references to minimap scene with a small delay
     this.time.delayedCall(100, () => {
@@ -249,91 +253,19 @@ export default class DungeonScene extends Phaser.Scene {
       this.scene.get("InventoryScene").events.emit('updateInventory');
     });
 
-    // Create speed boost timer display
-    this.createSpeedBoostTimer();
-
-    // Listen for speed boost events
-    this.events.on('speedBoostActivated', this.onSpeedBoostActivated, this);
-    this.events.on('speedBoostExpired', this.onSpeedBoostExpired, this);
+    // Listen for speed boost events and forward them to timer scene
+    this.events.on('speedBoostActivated', (data) => {
+      this.scene.get("TimerScene").events.emit('speedBoostActivated', data);
+    });
+    this.events.on('speedBoostExpired', () => {
+      this.scene.get("TimerScene").events.emit('speedBoostExpired');
+    });
   }
 
-  private createSpeedBoostTimer() {
-    // Create background for timer
-    this.speedBoostBackground = this.add.rectangle(
-      120, // x position (left side)
-      40,  // y position (top)
-      200, // width
-      40,  // height
-      0x000000,
-      0.8
-    );
-    this.speedBoostBackground.setStrokeStyle(2, 0x00ff00);
-    this.speedBoostBackground.setDepth(2000);
-    this.speedBoostBackground.setVisible(false);
-
-    // Create timer text
-    this.speedBoostTimer = this.add.text(
-      120, // x position (left side)
-      40,  // y position (top)
-      "",
-      {
-        fontSize: '14px',
-        color: '#00ff00',
-        backgroundColor: '#000000',
-        padding: { x: 8, y: 4 }
-      }
-    );
-    this.speedBoostTimer.setOrigin(0.5);
-    this.speedBoostTimer.setDepth(2001);
-    this.speedBoostTimer.setVisible(false);
-  }
-
-  private onSpeedBoostActivated(data: { duration: number }) {
-    console.log("Speed boost activated! Duration:", data.duration);
-    if (this.speedBoostBackground && this.speedBoostTimer) {
-      this.speedBoostBackground.setVisible(true);
-      this.speedBoostTimer.setVisible(true);
-    }
-  }
-
-  private onSpeedBoostExpired() {
-    console.log("Speed boost expired!");
-    if (this.speedBoostBackground && this.speedBoostTimer) {
-      this.speedBoostBackground.setVisible(false);
-      this.speedBoostTimer.setVisible(false);
-    }
-  }
-
-  // Add new collision handler for items
-  playerItemCollide(
-    playerSprite: Phaser.GameObjects.GameObject,
-    itemSprite: Phaser.GameObjects.GameObject
-  ) {
-    console.log("Player collided with item!");
-    if (itemSprite instanceof PickupItem) {
-      itemSprite.pickupItem();
-    }
-  }
-
-  playerChestCollide(
-    playerSprite: Phaser.GameObjects.GameObject,
-    chestSprite: Phaser.GameObjects.GameObject
-  ) {
-    // Find the chest object that corresponds to this sprite
-    const chest = this.chests.find(c => c.sprite === chestSprite);
-    if (chest) {
-      console.log("Player collided with chest!");
-      chest.openChest();
-    } else {
-      console.log("Could not find chest object for sprite:", chestSprite);
-    }
-  }
+  // Remove the timer-related methods since they're now in TimerScene
 
   update(time: number, delta: number) {
     this.player!.update(time);
-
-    // Update speed boost timer display
-    this.updateSpeedBoostTimer();
 
     const camera = this.cameras.main;
 
@@ -365,22 +297,18 @@ export default class DungeonScene extends Phaser.Scene {
     // The inventory scene will handle its own updates
   }
 
-  private updateSpeedBoostTimer() {
-    if (!this.player || !this.speedBoostTimer) return;
-
-    const speedBoostStatus = this.player.getSpeedBoostStatus();
-
-    if (speedBoostStatus.active) {
-      this.speedBoostTimer.setText(`SPEED BOOST: ${speedBoostStatus.remainingTime}s`);
-      this.speedBoostTimer.setVisible(true);
-      if (this.speedBoostBackground) {
-        this.speedBoostBackground.setVisible(true);
-      }
+  // Add the missing playerChestCollide method
+  playerChestCollide(
+    playerSprite: Phaser.GameObjects.GameObject,
+    chestSprite: Phaser.GameObjects.GameObject
+  ) {
+    // Find the chest object that corresponds to this sprite
+    const chest = this.chests.find(c => c.sprite === chestSprite);
+    if (chest) {
+      console.log("Player collided with chest!");
+      chest.openChest();
     } else {
-      this.speedBoostTimer.setVisible(false);
-      if (this.speedBoostBackground) {
-        this.speedBoostBackground.setVisible(false);
-      }
+      console.log("Could not find chest object for sprite:", chestSprite);
     }
   }
 }

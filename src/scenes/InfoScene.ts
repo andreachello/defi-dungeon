@@ -21,13 +21,13 @@ export default class InfoScene extends Phaser.Scene {
 
   update(time: number, _: number): void {
     if (time > this.lastUpdate! + 100) {
-      this.text!.setText([
-        "DeFi Dungeon!",
-        "",
-        "Use arrow keys to walk around the map!",
-        "",
-        "FPS: " + Math.round(this.game.loop.actualFps)
-      ]);
+      // this.text!.setText([
+      //   "DeFi Dungeon!",
+      //   "",
+      //   "Use arrow keys to walk around the map!",
+      //   "",
+      //   "FPS: " + Math.round(this.game.loop.actualFps)
+      // ]);
       this.lastUpdate = time;
     }
   }
