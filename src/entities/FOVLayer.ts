@@ -5,6 +5,7 @@ import Phaser from "phaser";
 
 const baseRadius = 7;
 const fogAlpha = 0.8;
+const dimmedAlpha = 0.4;
 
 const lightDropoff = [0.7, 0.6, 0.3, 0.1];
 
@@ -36,6 +37,7 @@ export default class FOVLayer {
   private map: DungeonMap;
   private currentRadius: number = baseRadius;
   private visionBoostActive: boolean = false;
+  private inBossRoom: boolean = false;
 
   constructor(map: DungeonMap) {
     const utilTiles = map.tilemap.addTilesetImage("util");
@@ -71,13 +73,31 @@ export default class FOVLayer {
   setVisionBoost(active: boolean) {
     this.visionBoostActive = active;
     console.log(`Vision boost ${active ? 'activated' : 'deactivated'}`);
+  }
 
-    if (active) {
-      // Hide the FOV layer completely
-      this.layer.setVisible(false);
-    } else {
-      // Show the FOV layer again
-      this.layer.setVisible(true);
+  // Add method to check if player is in boss room
+  checkBossRoom(playerX: number, playerY: number) {
+    const tileX = this.map.tilemap!.worldToTileX(playerX);
+    const tileY = this.map.tilemap!.worldToTileY(playerY);
+
+    // Check if player is in a boss room
+    for (let i = 0; i < this.map.rooms.length; i++) {
+      const room = this.map.rooms[i];
+      if (this.map.getBossLockedRooms().has(i)) {
+        if (tileX >= room.x && tileX < room.x + room.width &&
+          tileY >= room.y && tileY < room.y + room.height) {
+          if (!this.inBossRoom) {
+            console.log("Player entered boss room - disabling FOV!");
+            this.inBossRoom = true;
+          }
+          return;
+        }
+      }
+    }
+
+    if (this.inBossRoom) {
+      console.log("Player left boss room - re-enabling FOV!");
+      this.inBossRoom = false;
     }
   }
 
@@ -86,24 +106,70 @@ export default class FOVLayer {
     bounds: Phaser.Geom.Rectangle,
     delta: number
   ) {
-    // If vision boost is active, don't update the FOV layer
-    if (this.visionBoostActive) {
+    // Check if player is in boss room
+    this.checkBossRoom(pos.x, pos.y);
+
+    // If in boss room, disable FOV completely
+    if (this.inBossRoom) {
+      this.disableFOV(bounds, delta);
       return;
     }
 
-    if (!this.lastPos.equals(pos)) {
-      this.updateMRPAS(pos);
-      this.lastPos = pos.clone();
-    }
+    // If vision boost is active, dim the entire map uniformly
+    if (this.visionBoostActive) {
+      this.updateDimmedVision(bounds, delta);
+    } else {
+      // Normal FOV behavior
+      if (!this.lastPos.equals(pos)) {
+        this.updateMRPAS(pos);
+        this.lastPos = pos.clone();
+      }
 
+      for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
+        for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+          if (y < 0 || y >= this.map.height || x < 0 || x >= this.map.width) {
+            continue;
+          }
+          const desiredAlpha = this.map.tiles[y][x].desiredAlpha;
+          const tile = this.layer.getTileAt(x, y);
+          updateTileAlpha(desiredAlpha, delta, tile);
+        }
+      }
+    }
+  }
+
+  private disableFOV(bounds: Phaser.Geom.Rectangle, delta: number) {
+    // Set all tiles to fully visible (alpha = 0) when in boss room
     for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
       for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
         if (y < 0 || y >= this.map.height || x < 0 || x >= this.map.width) {
           continue;
         }
-        const desiredAlpha = this.map.tiles[y][x].desiredAlpha;
+
+        // Mark all tiles as seen and set them to fully visible
+        this.map.tiles[y][x].seen = true;
+        this.map.tiles[y][x].desiredAlpha = 0; // Fully visible
+
         const tile = this.layer.getTileAt(x, y);
-        updateTileAlpha(desiredAlpha, delta, tile);
+        updateTileAlpha(0, delta, tile);
+      }
+    }
+  }
+
+  private updateDimmedVision(bounds: Phaser.Geom.Rectangle, delta: number) {
+    // Set all tiles to a uniform dimmed alpha
+    for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
+      for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+        if (y < 0 || y >= this.map.height || x < 0 || x >= this.map.width) {
+          continue;
+        }
+
+        // Mark all tiles as seen and set them to dimmed alpha
+        this.map.tiles[y][x].seen = true;
+        this.map.tiles[y][x].desiredAlpha = dimmedAlpha;
+
+        const tile = this.layer.getTileAt(x, y);
+        updateTileAlpha(dimmedAlpha, delta, tile);
       }
     }
   }

@@ -103,12 +103,24 @@ export default class Map {
 
     // Choose starting room (must be unlocked)
     const unlockedRooms = this.rooms.filter((_, index) =>
-      !this.lockedRooms.has(index) && !this.goldLockedRooms.has(index)
+      !this.lockedRooms.has(index) &&
+      !this.goldLockedRooms.has(index) &&
+      !this.bossLockedRooms.has(index) // Add boss room check
     );
-    const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
-    const firstRoom = unlockedRooms[roomNumber];
-    this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
-    this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+
+    if (unlockedRooms.length === 0) {
+      console.error("No unlocked rooms available for spawn! This should not happen.");
+      // Fallback: use the first room regardless
+      const firstRoom = this.rooms[0];
+      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
+      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+    } else {
+      const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
+      const firstRoom = unlockedRooms[roomNumber];
+      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
+      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+      console.log(`Player spawning in unlocked room ${this.rooms.indexOf(firstRoom)}`);
+    }
 
     this.tilemap = scene.make.tilemap({
       tileWidth: Graphics.environment.width,
@@ -164,10 +176,15 @@ export default class Map {
         room.y + room.height - 1
       );
 
-      // Spawn chest in normal rooms
+      // Spawn chest in normal rooms with 40% chance
       if (!isLocked && !isGoldLocked && !isBossRoom) {
-        console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
-        this.placeChestInRoom(room, roomTL, roomBounds);
+        const chestChance = Math.random();
+        if (chestChance < 0.4) { // 40% chance
+          console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
+          this.placeChestInRoom(room, roomTL, roomBounds);
+        } else {
+          console.log(`Room ${roomIndex} - no chest (rolled ${chestChance.toFixed(2)})`);
+        }
       } else {
         console.log(`Room ${roomIndex} is locked - no chest placed`);
       }

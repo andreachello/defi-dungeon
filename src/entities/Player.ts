@@ -153,11 +153,11 @@ export default class Player {
         // Apply vision boost for 30 seconds
         console.log("Used vision potion! Vision increased by 2x for 30 seconds!");
         this.visionMultiplier = 2;
-        this.visionBoostUntil = this.time + 1000; // 1 seconds
+        this.visionBoostUntil = this.time + 2000; // 2 seconds
         this.inventory.removeItem(itemId, 1);
 
         // Emit event to notify scene about vision boost
-        this.scene.events.emit('visionBoostActivated', { duration: 1000 });
+        this.scene.events.emit('visionBoostActivated', { duration: 2000 });
         return true;
       default:
         return false;
