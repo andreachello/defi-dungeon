@@ -133,8 +133,8 @@ export default class Player {
 
     console.log(`Player health after damage: ${this.health}`);
 
-    // Emit health change event to update UI
-    this.scene.events.emit('playerHealthChanged', {
+    // Emit health change event globally for all scenes
+    this.scene.game.events.emit('playerHealthChanged', {
       health: this.health,
       maxHealth: this.maxHealth
     });
@@ -152,8 +152,8 @@ export default class Player {
   heal(amount: number = 1): void {
     this.health = Math.min(this.maxHealth, this.health + amount);
 
-    // Emit health change event to update UI
-    this.scene.events.emit('playerHealthChanged', {
+    // Emit health change event globally for all scenes
+    this.scene.game.events.emit('playerHealthChanged', {
       health: this.health,
       maxHealth: this.maxHealth
     });
@@ -166,17 +166,20 @@ export default class Player {
     // Set dead state
     this.isDead = true;
 
-    // Emit game over event to the current scene (DungeonScene)
-    this.scene.events.emit('gameOver', { reason: 'player_died' });
-    console.log("Game over event emitted to DungeonScene");
-
     // Stop player movement and actions
     this.sprite.setVelocity(0, 0);
     this.attacking = false;
 
+    // Stop the current animation
+    this.sprite.anims.stop();
+
     // Optional: Play death animation or effect
     this.scene.cameras.main.shake(500, 0.01);
     this.scene.cameras.main.flash(200, 255, 0, 0);
+
+    // Emit game over event to the current scene (DungeonScene)
+    this.scene.events.emit('gameOver', { reason: 'player_died' });
+    console.log("Game over event emitted to DungeonScene");
   }
 
   // Add getter for dead state
@@ -330,6 +333,10 @@ export default class Player {
     // If player is dead, don't process any movement or actions
     if (this.isDead) {
       this.body.setVelocity(0, 0);
+      // Stop any ongoing animation
+      if (this.sprite.anims.isPlaying) {
+        this.sprite.anims.stop();
+      }
       return;
     }
 

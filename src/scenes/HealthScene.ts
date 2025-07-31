@@ -25,10 +25,10 @@ export default class HealthScene extends Phaser.Scene {
 
         // Listen for player reference updates and health change events
         this.events.on('setPlayer', this.setPlayer, this);
-        this.events.on('playerHealthChanged', this.updateHealthDisplay, this);
+        this.game.events.on('playerHealthChanged', this.updateHealthDisplay, this);
 
-        // Initial health display update
-        this.updateHealthDisplay({ health: 6, maxHealth: 6 });
+        // Initial health display update - updated for 3 health points
+        this.updateHealthDisplay({ health: 3, maxHealth: 3 });
 
         console.log("HealthScene setup completed");
     }
@@ -60,13 +60,21 @@ export default class HealthScene extends Phaser.Scene {
 
         for (let i = 0; i < this.heartSprites.length; i++) {
             const heartSprite = this.heartSprites[i];
-            const heartHealth = Math.min(2, Math.max(0, health - i * 2));
 
-            if (heartHealth === 2) {
+            // Calculate health for this heart from left to right
+            // Heart 0 (leftmost) = health - 2
+            // Heart 1 (middle) = health - 1  
+            // Heart 2 (rightmost) = health - 0
+            const heartHealth = Math.min(1, Math.max(0, health - i * 1));
+
+            if (heartHealth >= 1) {
+                // Full heart
                 heartSprite.setFrame(Graphics.environment.indices.heart.full);
-            } else if (heartHealth === 1) {
+            } else if (heartHealth >= 0.5) {
+                // Half heart
                 heartSprite.setFrame(Graphics.environment.indices.heart.half);
             } else {
+                // Empty heart
                 heartSprite.setFrame(Graphics.environment.indices.heart.empty);
             }
 
