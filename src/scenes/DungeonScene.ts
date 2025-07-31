@@ -29,8 +29,6 @@ export default class DungeonScene extends Phaser.Scene {
   private inventorySprites: Phaser.GameObjects.Sprite[] = [];
   private inventoryTexts: Phaser.GameObjects.Text[] = [];
 
-  // Remove the timer properties since we're using a separate scene
-
   preload(): void {
     this.load.spritesheet(Graphics.environment.name, Graphics.environment.file, {
       frameWidth: Graphics.environment.width,
@@ -81,6 +79,8 @@ export default class DungeonScene extends Phaser.Scene {
       slime.kill();
       return false;
     } else {
+      // Deal damage to player (half a heart = 0.5 health points)
+      this.player!.takeDamage(0.5);
       this.player!.stagger();
       return true;
     }
@@ -90,6 +90,9 @@ export default class DungeonScene extends Phaser.Scene {
     this.events.on("wake", () => {
       this.scene.run("InfoScene");
     });
+
+    // Listen for game over event
+    this.events.on('gameOver', this.onGameOver, this);
 
     Object.values(Graphics.player.animations).forEach(anim => {
       if (!this.anims.get(anim.key)) {
@@ -230,11 +233,17 @@ export default class DungeonScene extends Phaser.Scene {
     // Launch timer scene in parallel
     this.scene.launch("TimerScene");
 
+    // Launch health scene in parallel
+    this.scene.launch("HealthScene");
+
     // Pass player reference to inventory scene
     this.scene.get("InventoryScene").events.emit('setPlayer', this.player);
 
     // Pass player reference to timer scene
     this.scene.get("TimerScene").events.emit('setPlayer', this.player);
+
+    // Pass player reference to health scene
+    this.scene.get("HealthScene").events.emit('setPlayer', this.player);
 
     // Pass map and player references to minimap scene with a small delay
     this.time.delayedCall(100, () => {
@@ -278,7 +287,7 @@ export default class DungeonScene extends Phaser.Scene {
     });
   }
 
-  // Remove the timer-related methods since they're now in TimerScene
+  // Remove the createHeartUI and updateHealthDisplay methods since they're now in HealthScene
 
   update(time: number, delta: number) {
     this.player!.update(time);
@@ -316,6 +325,24 @@ export default class DungeonScene extends Phaser.Scene {
     // The FOV layer will handle its own visibility based on vision boost status
   }
 
+  // Add the missing playerItemCollide method
+  playerItemCollide(
+    playerSprite: Phaser.GameObjects.GameObject,
+    itemSprite: Phaser.GameObjects.GameObject
+  ) {
+    // Find the pickup item that corresponds to this sprite
+    const item = this.children.list.find(child =>
+      child instanceof PickupItem && child.sprite === itemSprite
+    ) as PickupItem;
+
+    if (item) {
+      console.log("Player collided with pickup item!");
+      item.pickupItem(); // Changed from item.pickup(this.player!) to item.pickupItem()
+    } else {
+      console.log("Could not find pickup item object for sprite:", itemSprite);
+    }
+  }
+
   // Add the missing playerChestCollide method
   playerChestCollide(
     playerSprite: Phaser.GameObjects.GameObject,
@@ -329,5 +356,28 @@ export default class DungeonScene extends Phaser.Scene {
     } else {
       console.log("Could not find chest object for sprite:", chestSprite);
     }
+  }
+
+  private onGameOver(data: { reason: string }) {
+    console.log("Game Over in DungeonScene! Reason:", data.reason);
+
+    // Stop all enemy movement and interactions
+    if (this.slimes) {
+      this.slimes.forEach(slime => {
+        slime.sprite.setVelocity(0, 0);
+      });
+    }
+
+    // Disable player input
+    if (this.player) {
+      this.player.sprite.setVelocity(0, 0);
+    }
+
+    // Optional: Add visual effects
+    this.cameras.main.shake(500, 0.01);
+    this.cameras.main.flash(200, 255, 0, 0);
+
+    // Emit global game over event for other scenes
+    this.game.events.emit('gameOver', data);
   }
 }

@@ -5,6 +5,7 @@ import ReferenceScene from "./scenes/ReferenceScene";
 import InventoryScene from "./scenes/InventoryScene";
 import MinimapScene from "./scenes/MinimapScene";
 import TimerScene from "./scenes/TimerScene";
+import HealthScene from "./scenes/HealthScene";
 
 new Phaser.Game({
   type: Phaser.WEBGL,
@@ -17,8 +18,9 @@ new Phaser.Game({
     InfoScene,
     InventoryScene,
     MinimapScene,
-    TimerScene, // Add the new TimerScene
-    ReferenceScene
+    TimerScene,
+    ReferenceScene,
+    HealthScene
   ],
   scale: {
     mode: Phaser.Scale.RESIZE

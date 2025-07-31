@@ -27,6 +27,11 @@ export default class Player {
   public inventory: Inventory;
   private keys: Keys;
 
+  // Add health properties
+  private health: number = 6; // 6 health points (3 hearts)
+  private maxHealth: number = 6;
+  private isDead: boolean = false; // Add dead state
+
   private attackUntil: number;
   private staggerUntil: number;
   private attackLockedUntil: number;
@@ -58,6 +63,10 @@ export default class Player {
 
     // Initialize inventory
     this.inventory = new Inventory();
+
+    // Initialize health
+    this.health = 3;
+    this.maxHealth = 3;
 
     this.keys = scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.UP,
@@ -107,6 +116,74 @@ export default class Player {
     this.time = 0;
   }
 
+  // Add health getters and setters
+  getHealth(): number {
+    return this.health;
+  }
+
+  getMaxHealth(): number {
+    return this.maxHealth;
+  }
+
+  // Add damage method
+  takeDamage(amount: number = 0.5): void {
+    console.log(`Player taking damage: ${amount}. Current health: ${this.health}`);
+
+    this.health = Math.max(0, this.health - amount);
+
+    console.log(`Player health after damage: ${this.health}`);
+
+    // Emit health change event to update UI
+    this.scene.events.emit('playerHealthChanged', {
+      health: this.health,
+      maxHealth: this.maxHealth
+    });
+
+    // Check if player is dead
+    if (this.health <= 0) {
+      console.log("Player health is 0 or below, calling die()");
+      this.die();
+    } else {
+      console.log("Player survived, health remaining:", this.health);
+    }
+  }
+
+  // Add heal method
+  heal(amount: number = 1): void {
+    this.health = Math.min(this.maxHealth, this.health + amount);
+
+    // Emit health change event to update UI
+    this.scene.events.emit('playerHealthChanged', {
+      health: this.health,
+      maxHealth: this.maxHealth
+    });
+  }
+
+  // Add death method
+  private die(): void {
+    console.log("Player died! Game Over!");
+
+    // Set dead state
+    this.isDead = true;
+
+    // Emit game over event to the current scene (DungeonScene)
+    this.scene.events.emit('gameOver', { reason: 'player_died' });
+    console.log("Game over event emitted to DungeonScene");
+
+    // Stop player movement and actions
+    this.sprite.setVelocity(0, 0);
+    this.attacking = false;
+
+    // Optional: Play death animation or effect
+    this.scene.cameras.main.shake(500, 0.01);
+    this.scene.cameras.main.flash(200, 255, 0, 0);
+  }
+
+  // Add getter for dead state
+  isPlayerDead(): boolean {
+    return this.isDead;
+  }
+
   isAttacking(): boolean {
     return this.attacking;
   }
@@ -130,8 +207,9 @@ export default class Player {
 
     switch (item.data.type) {
       case "health_potion":
-        // Add health restoration logic here
-        console.log("Used health potion!");
+        // Heal 2 health points (1 heart)
+        this.heal(2);
+        console.log("Used health potion! Health restored!");
         this.inventory.removeItem(itemId, 1);
         return true;
       case "mana_potion":
@@ -248,6 +326,12 @@ export default class Player {
 
   update(time: number) {
     this.time = time;
+
+    // If player is dead, don't process any movement or actions
+    if (this.isDead) {
+      this.body.setVelocity(0, 0);
+      return;
+    }
 
     // Check if speed boost has expired
     if (this.speedBoostUntil > 0 && time > this.speedBoostUntil) {

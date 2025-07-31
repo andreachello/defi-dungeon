@@ -61,6 +61,11 @@ const environment = {
       off: 0xa5,
       on: 0xa4,
     },
+    heart: {
+      full: 0xa8,
+      half: 0xa9,
+      empty: 0xaa
+    },
     chest: {
       closed: 0xc1,
       open: 0xc3

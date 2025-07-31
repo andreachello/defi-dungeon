@@ -73,6 +73,9 @@ export default class TimerScene extends Phaser.Scene {
         this.events.on('visionBoostActivated', this.onVisionBoostActivated, this);
         this.events.on('visionBoostExpired', this.onVisionBoostExpired, this);
 
+        // Listen for global game over event
+        this.game.events.on('gameOver', this.onGameOver, this);
+
         // Start game timer
         this.startGameTimer();
 
@@ -81,7 +84,7 @@ export default class TimerScene extends Phaser.Scene {
 
     private createGameTimer() {
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2; // Top left position
+        const yPos = this.padding * 2 + 20;
 
         this.gameTimerBackground = this.add.rectangle(
             xPos,
@@ -139,7 +142,7 @@ export default class TimerScene extends Phaser.Scene {
 
     private createSpeedBoostTimer() {
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + this.timerHeight + 10; // Below game timer
+        const yPos = this.padding * 2 + 50 + this.timerHeight + 10; // Pushed down by 50 pixels
 
         this.background = this.add.rectangle(
             xPos,
@@ -210,7 +213,7 @@ export default class TimerScene extends Phaser.Scene {
 
     private createVisionBoostTimer() {
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + (this.timerHeight + 10) * 2; // Below speed boost timer
+        const yPos = this.padding * 2 + 50 + (this.timerHeight + 10) * 2; // Pushed down by 50 pixels
 
         this.visionBackground = this.add.rectangle(
             xPos,
@@ -323,40 +326,8 @@ export default class TimerScene extends Phaser.Scene {
     private endGame() {
         console.log("Game Over! Time's up!");
 
-        // Stop all timers
-        if (this.gameUpdateTimer) {
-            this.gameUpdateTimer.destroy();
-        }
-        if (this.updateTimer) {
-            this.updateTimer.destroy();
-        }
-        if (this.visionUpdateTimer) {
-            this.visionUpdateTimer.destroy();
-        }
-
-        // Show game over message
-        const gameWidth = this.game.scale.width;
-        const gameHeight = this.game.scale.height;
-
-        const gameOverText = this.add.text(
-            gameWidth / 2,
-            gameHeight / 2,
-            'GAME OVER\nTime\'s Up!',
-            {
-                fontSize: '32px',
-                color: '#ff0000',
-                backgroundColor: '#000000',
-                padding: { x: 20, y: 10 },
-                align: 'center'
-            }
-        );
-        gameOverText.setOrigin(0.5);
-        gameOverText.setDepth(3000);
-
-        // Stop the game after 3 seconds
-        this.time.delayedCall(3000, () => {
-            console.log("Game ended due to time limit");
-        });
+        // Emit game over event instead of handling it directly
+        this.events.emit('gameOver', { reason: 'time_up' });
     }
 
     private setPlayer(player: Player) {
@@ -422,6 +393,61 @@ export default class TimerScene extends Phaser.Scene {
             this.visionUpdateTimer.destroy();
             this.visionUpdateTimer = null;
         }
+    }
+
+    private onGameOver(data: { reason: string }) {
+        console.log("=== GAME OVER EVENT RECEIVED IN TIMERSCENE ===");
+        console.log("Game Over in TimerScene! Reason:", data.reason);
+
+        // Stop all timers
+        if (this.gameUpdateTimer) {
+            this.gameUpdateTimer.destroy();
+        }
+        if (this.updateTimer) {
+            this.updateTimer.destroy();
+        }
+        if (this.visionUpdateTimer) {
+            this.visionUpdateTimer.destroy();
+        }
+
+        // Show game over message
+        const gameWidth = this.game.scale.width;
+        const gameHeight = this.game.scale.height;
+
+        console.log("Game dimensions:", gameWidth, "x", gameHeight);
+
+        let gameOverMessage = 'GAME OVER';
+        if (data.reason === 'player_died') {
+            gameOverMessage = 'GAME OVER\nYou Died!';
+        } else if (data.reason === 'time_up') {
+            gameOverMessage = 'GAME OVER\nTime\'s Up!';
+        }
+
+        console.log("Creating game over text with message:", gameOverMessage);
+
+        const gameOverText = this.add.text(
+            gameWidth / 2,
+            gameHeight / 2,
+            gameOverMessage,
+            {
+                fontSize: '32px',
+                color: '#ff0000',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 },
+                align: 'center'
+            }
+        );
+        gameOverText.setOrigin(0.5);
+        gameOverText.setDepth(3000);
+
+        console.log("Game over text created at position:", gameOverText.x, gameOverText.y);
+        console.log("Game over text depth:", gameOverText.depth);
+
+        // Stop the game after 3 seconds
+        this.time.delayedCall(3000, () => {
+            console.log("Game ended due to player death");
+            // You can add restart logic here or return to main menu
+        });
     }
 
     private showSpeedTimer() {
