@@ -230,7 +230,7 @@ export default class Player {
 
     switch (item.data.type) {
       case "health_potion":
-        // Heal 2 health points (1 heart)
+        // Heal 2 health points (2 full hearts)
         this.heal(2);
         console.log("Used health potion! Health restored!");
         this.inventory.removeItem(itemId, 1);

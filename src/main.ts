@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import DungeonScene from "./scenes/DungeonScene";
 import InfoScene from "./scenes/InfoScene";
-import ReferenceScene from "./scenes/ReferenceScene";
 import InventoryScene from "./scenes/InventoryScene";
 import MinimapScene from "./scenes/MinimapScene";
 import TimerScene from "./scenes/TimerScene";
@@ -19,7 +18,6 @@ new Phaser.Game({
     InventoryScene,
     MinimapScene,
     TimerScene,
-    ReferenceScene,
     HealthScene
   ],
   scale: {

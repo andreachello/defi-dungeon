@@ -39,7 +39,7 @@ export default class Chest {
         const numItems = 1;
 
         for (let i = 0; i < numItems; i++) {
-            const itemType = Phaser.Math.Between(0, 2);
+            const itemType = Phaser.Math.Between(0, 3); 
             let item: Item;
 
             switch (itemType) {
@@ -48,6 +48,9 @@ export default class Chest {
                     break;
                 case 1:
                     item = Item.createVisionPotion();
+                    break;
+                case 2:
+                    item = Item.createHealthPotion(); 
                     break;
                 default:
                     item = Item.createSpeedPotion();
