@@ -20,6 +20,16 @@ interface Keys {
   a: Phaser.Input.Keyboard.Key;
   s: Phaser.Input.Keyboard.Key;
   d: Phaser.Input.Keyboard.Key;
+  // Add number keys for inventory
+  one: Phaser.Input.Keyboard.Key;
+  two: Phaser.Input.Keyboard.Key;
+  three: Phaser.Input.Keyboard.Key;
+  four: Phaser.Input.Keyboard.Key;
+  five: Phaser.Input.Keyboard.Key;
+  six: Phaser.Input.Keyboard.Key;
+  seven: Phaser.Input.Keyboard.Key;
+  eight: Phaser.Input.Keyboard.Key;
+  nine: Phaser.Input.Keyboard.Key;
 }
 
 export default class Player {
@@ -77,7 +87,17 @@ export default class Player {
       w: "w",
       a: "a",
       s: "s",
-      d: "d"
+      d: "d",
+      // Add number keys
+      one: Phaser.Input.Keyboard.KeyCodes.ONE,
+      two: Phaser.Input.Keyboard.KeyCodes.TWO,
+      three: Phaser.Input.Keyboard.KeyCodes.THREE,
+      four: Phaser.Input.Keyboard.KeyCodes.FOUR,
+      five: Phaser.Input.Keyboard.KeyCodes.FIVE,
+      six: Phaser.Input.Keyboard.KeyCodes.SIX,
+      seven: Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      eight: Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      nine: Phaser.Input.Keyboard.KeyCodes.NINE
     }) as Keys;
 
     this.attackUntil = 0;
@@ -214,11 +234,15 @@ export default class Player {
         this.heal(2);
         console.log("Used health potion! Health restored!");
         this.inventory.removeItem(itemId, 1);
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
         return true;
       case "mana_potion":
         // Add mana restoration logic here
         console.log("Used mana potion!");
         this.inventory.removeItem(itemId, 1);
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
         return true;
       case "speed_potion":
         // Apply speed boost for 30 seconds
@@ -229,6 +253,8 @@ export default class Player {
 
         // Emit event to notify scene about speed boost
         this.scene.events.emit('speedBoostActivated', { duration: 30000 });
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
         return true;
       case "vision_potion":
         // Apply vision boost for 30 seconds
@@ -239,6 +265,8 @@ export default class Player {
 
         // Emit event to notify scene about vision boost
         this.scene.events.emit('visionBoostActivated', { duration: 2000 });
+        // Emit event to notify inventory scene that inventory changed
+        this.scene.events.emit('inventoryUpdated');
         return true;
       default:
         return false;
@@ -327,6 +355,42 @@ export default class Player {
     return false;
   }
 
+  // Add method to use item by slot index
+  useItemBySlot(slotIndex: number): boolean {
+    console.log(`Attempting to use item in slot ${slotIndex}`);
+
+    const items = this.inventory.getAllItems();
+    console.log(`Total items in inventory: ${items.length}`);
+
+    if (slotIndex < items.length) {
+      const item = items[slotIndex];
+      console.log(`Found item in slot ${slotIndex}: ${item.data.name}`);
+
+      if (this.useItem(item.data.id)) {
+        console.log(`Successfully used item: ${item.data.name}`);
+        // Show usage message
+        this.showItemUsedMessage(item.data.name);
+
+        // Force inventory display update
+        this.scene.events.emit('updateInventory');
+
+        return true;
+      } else {
+        console.log(`Failed to use item: ${item.data.name}`);
+      }
+    } else {
+      console.log(`No item found in slot ${slotIndex}`);
+    }
+    return false;
+  }
+
+  // Add method to show item used message
+  private showItemUsedMessage(itemName: string) {
+    console.log(`Showing message for used item: ${itemName}`);
+    // Emit event globally to show message in UI
+    this.scene.game.events.emit('showItemUsedMessage', { itemName });
+  }
+
   update(time: number) {
     this.time = time;
 
@@ -339,6 +403,9 @@ export default class Player {
       }
       return;
     }
+
+    // Check number key presses for inventory
+    this.checkNumberKeyPresses();
 
     // Check if speed boost has expired
     if (this.speedBoostUntil > 0 && time > this.speedBoostUntil) {
@@ -457,5 +524,27 @@ export default class Player {
     if (this.flashEmitter.on) {
       this.flashEmitter.stop();
     }
+  }
+
+  // Add method to check number key presses
+  private checkNumberKeyPresses() {
+    const numberKeys = [
+      this.keys.one,
+      this.keys.two,
+      this.keys.three,
+      this.keys.four,
+      this.keys.five,
+      this.keys.six,
+      this.keys.seven,
+      this.keys.eight,
+      this.keys.nine
+    ];
+
+    numberKeys.forEach((key, index) => {
+      if (Phaser.Input.Keyboard.JustDown(key)) {
+        console.log(`Number key ${index + 1} pressed, using item in slot ${index}`);
+        this.useItemBySlot(index);
+      }
+    });
   }
 }

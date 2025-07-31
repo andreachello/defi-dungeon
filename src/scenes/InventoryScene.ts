@@ -66,6 +66,9 @@ export default class InventoryScene extends Phaser.Scene {
         // Listen for player reference updates
         this.events.on('setPlayer', this.setPlayer, this);
 
+        // Listen for global item used messages
+        this.game.events.on('showItemUsedMessage', this.showItemUsedMessage, this);
+
         // Initial inventory display update
         this.updateInventoryDisplay();
     }
@@ -233,7 +236,7 @@ export default class InventoryScene extends Phaser.Scene {
                 this.updateInventoryDisplay();
 
                 // Show usage feedback
-                this.showItemUsedMessage(item.data.name);
+                this.showItemUsedMessage({ itemName: item.data.name });
 
                 // Emit event to notify other scenes that inventory was used
                 this.events.emit('itemUsed', { itemId: item.data.id, itemName: item.data.name });
@@ -241,7 +244,7 @@ export default class InventoryScene extends Phaser.Scene {
         }
     }
 
-    private showItemUsedMessage(itemName: string) {
+    private showItemUsedMessage(data: { itemName: string }) {
         // Get the game's display dimensions for fixed positioning
         const gameWidth = this.game.scale.width;
         const gameHeight = this.game.scale.height;
@@ -249,7 +252,7 @@ export default class InventoryScene extends Phaser.Scene {
         const text = this.add.text(
             gameWidth / 2,
             gameHeight - 120,
-            `Used ${itemName}!`,
+            `Used ${data.itemName}!`,
             {
                 fontSize: '16px',
                 color: '#00ff00',
