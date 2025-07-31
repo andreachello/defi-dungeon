@@ -157,7 +157,7 @@ export default class TimerScene extends Phaser.Scene {
 
         this.speedIcon = this.add.sprite(
             xPos + 30,
-            yPos + this.timerHeight / 2,
+            yPos + this.timerHeight / 2 - 40,
             'items',
             3
         );
@@ -167,7 +167,7 @@ export default class TimerScene extends Phaser.Scene {
 
         this.title = this.add.text(
             xPos + 70,
-            yPos + this.timerHeight / 2,
+            yPos + this.timerHeight / 2 - 40,
             'SPEED BOOST',
             {
                 fontSize: '14px',
@@ -182,7 +182,7 @@ export default class TimerScene extends Phaser.Scene {
 
         this.countdownText = this.add.text(
             xPos + 180,
-            yPos + this.timerHeight / 2,
+            yPos + this.timerHeight / 2 - 40,
             '30',
             {
                 fontSize: '20px',
@@ -197,7 +197,7 @@ export default class TimerScene extends Phaser.Scene {
 
         this.timerText = this.add.text(
             xPos + 180,
-            yPos + this.timerHeight - 8,
+            yPos + this.timerHeight - 8 - 40,
             's',
             {
                 fontSize: '10px',

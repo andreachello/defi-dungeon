@@ -104,27 +104,6 @@ export default class Map {
       this.tiles[d.y][d.x] = new Tile(TileType.None, d.x, d.y, this);
     });
 
-    // Choose starting room (must be unlocked)
-    const unlockedRooms = this.rooms.filter((_, index) =>
-      !this.lockedRooms.has(index) &&
-      !this.goldLockedRooms.has(index) &&
-      !this.bossLockedRooms.has(index) // Add boss room check
-    );
-
-    if (unlockedRooms.length === 0) {
-      console.error("No unlocked rooms available for spawn! This should not happen.");
-      // Fallback: use the first room regardless
-      const firstRoom = this.rooms[0];
-      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
-      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
-    } else {
-      const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
-      const firstRoom = unlockedRooms[roomNumber];
-      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
-      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
-      console.log(`Player spawning in unlocked room ${this.rooms.indexOf(firstRoom)}`);
-    }
-
     this.tilemap = scene.make.tilemap({
       tileWidth: Graphics.environment.width,
       tileHeight: Graphics.environment.height,
@@ -154,6 +133,7 @@ export default class Map {
     this.slimes = [];
     this.chests = [];
 
+    // Place enemies and chests first
     for (let roomIndex = 0; roomIndex < dungeon.rooms.length; roomIndex++) {
       const room = dungeon.rooms[roomIndex];
       groundLayer.randomize(
@@ -233,6 +213,58 @@ export default class Map {
         this.slimes.push(slime);
       }
     }
+
+    // Now choose starting room (must be unlocked) and ensure safe spawn
+    const unlockedRooms = this.rooms.filter((_, index) =>
+      !this.lockedRooms.has(index) &&
+      !this.goldLockedRooms.has(index) &&
+      !this.bossLockedRooms.has(index) // Add boss room check
+    );
+
+    if (unlockedRooms.length === 0) {
+      console.error("No unlocked rooms available for spawn! This should not happen.");
+      // Fallback: use the first room regardless
+      const firstRoom = this.rooms[0];
+      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
+      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+    } else {
+      // Try to find a safe spawn position
+      let safePositionFound = false;
+      let attempts = 0;
+      const maxAttempts = 50;
+
+      while (!safePositionFound && attempts < maxAttempts) {
+        const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
+        const selectedRoom = unlockedRooms[roomNumber];
+
+        // Try multiple positions within the room
+        for (let posAttempt = 0; posAttempt < 10; posAttempt++) {
+          const spawnX = Math.floor(selectedRoom.x + 1 + Math.random() * (selectedRoom.width - 2));
+          const spawnY = Math.floor(selectedRoom.y + 1 + Math.random() * (selectedRoom.height - 2));
+
+          // Check if this position is safe (not on top of an enemy)
+          const isSafe = this.isPositionSafe(spawnX, spawnY);
+
+          if (isSafe) {
+            this.startingX = spawnX;
+            this.startingY = spawnY;
+            safePositionFound = true;
+            console.log(`Player spawning safely in unlocked room ${this.rooms.indexOf(selectedRoom)} at (${spawnX}, ${spawnY})`);
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      // If no safe position found, use the center of the first unlocked room
+      if (!safePositionFound) {
+        const firstRoom = unlockedRooms[0];
+        this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
+        this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+        console.log(`No safe position found, using center of room ${this.rooms.indexOf(firstRoom)}`);
+      }
+    }
+
     this.tilemap.convertLayerToStatic(groundLayer).setDepth(1);
 
     const wallLayer = this.tilemap.createBlankDynamicLayer(
@@ -808,5 +840,23 @@ export default class Map {
   // Add method to reset boss key status (for new games)
   static resetBossKeyStatus() {
     Map.bossKeyDropped = false;
+  }
+
+  // Add method to check if a position is safe (not on top of an enemy)
+  private isPositionSafe(x: number, y: number): boolean {
+    const safeDistance = 2; // Minimum distance from enemies in tiles
+
+    for (const slime of this.slimes) {
+      const slimeTileX = this.tilemap.worldToTileX(slime.sprite.x);
+      const slimeTileY = this.tilemap.worldToTileY(slime.sprite.y);
+
+      const distance = Math.sqrt((x - slimeTileX) ** 2 + (y - slimeTileY) ** 2);
+
+      if (distance < safeDistance) {
+        return false; // Too close to an enemy
+      }
+    }
+
+    return true; // Position is safe
   }
 }
