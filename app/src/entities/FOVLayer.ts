@@ -1,5 +1,5 @@
 import Graphics from "../assets/Graphics";
-import DungeonMap from "../entities/Map";
+import DungeonMap from "./Map";
 import { Mrpas } from "mrpas";
 import Phaser from "phaser";
 
