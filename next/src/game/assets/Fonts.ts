@@ -1,5 +1,5 @@
-import CasualEncounterPNG from "../../assets/annaanthropy/CasualEncounter.png";
-import CasualEncounterFNT from "../../assets/annaanthropy/CasualEncounter.fnt";
+const CasualEncounterPNG = "/assets/annaanthropy/CasualEncounter.png";
+const CasualEncounterFNT = "/assets/annaanthropy/CasualEncounter.fnt";
 
 export default {
   default: [CasualEncounterPNG, CasualEncounterFNT]

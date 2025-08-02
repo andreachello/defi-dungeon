@@ -1,9 +1,9 @@
-import RogueEnvironment from "../../assets/fongoose/RogueEnvironment16x16-extruded.png";
-import RoguePlayer from "../../assets/fongoose/RoguePlayer_48x48.png";
-import RogueSlime from "../../assets/fongoose/RogueSlime32x32.png";
-import RogueItems from "../../assets/fongoose/RogueItems16x16.png";
+const RogueEnvironment = "/assets/fongoose/RogueEnvironment16x16-extruded.png";
+const RoguePlayer = "/assets/fongoose/RoguePlayer_48x48.png";
+const RogueSlime = "/assets/fongoose/RogueSlime32x32.png";
+const RogueItems = "/assets/fongoose/RogueItems16x16.png";
 
-import Util from "../../assets/Util.png";
+const Util = "/assets/Util.png";
 
 type AnimConfig = {
   key: string;
