@@ -1,5 +1,5 @@
 {
-  "name": "next",
+  "name": "defidungeon",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "dungeoneer": "github:mipearson/dungeoneer#mp-fix-ts-bindings",
+    "mrpas": "^2.0.0",
+    "parcel": "^1.12.4",
+    "phaser": "3.21.0",
+    "phaser-plugin-scene-watcher": "4.0.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "next": "15.4.5"
