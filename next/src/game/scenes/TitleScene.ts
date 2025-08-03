@@ -83,10 +83,10 @@ export default class TitleScene extends Phaser.Scene {
         // Add title animation
         this.animateTitle();
 
-        // Add click/touch input
-        this.input.on('pointerdown', () => {
-            this.handleStartAction();
-        });
+        // Remove the global click handler - we'll handle clicks only on the button/text
+        // this.input.on('pointerdown', () => {
+        //     this.handleStartAction();
+        // });
     }
 
     private createCoverBackground(): void {
@@ -222,7 +222,18 @@ export default class TitleScene extends Phaser.Scene {
         } else {
             // Make the text interactive when wallet is not connected
             this.startButtonText.setInteractive();
+
+            // Add a visual indicator that the text is clickable
+            this.startButtonText.on('pointerover', () => {
+                this.startButtonText?.setTint(0xff6b35); // Orange tint on hover
+            });
+
+            this.startButtonText.on('pointerout', () => {
+                this.startButtonText?.setTint(0xffffff); // Back to white
+            });
+
             this.startButtonText.on('pointerdown', () => {
+                console.log('Connect wallet text clicked!'); // Debug log
                 this.handleStartAction();
             });
         }
@@ -399,9 +410,24 @@ export default class TitleScene extends Phaser.Scene {
                     this.startButton = undefined;
                 }
 
-                // Make text interactive
+                // Clear any existing event listeners and make text interactive
+                this.startButtonText.off('pointerover');
+                this.startButtonText.off('pointerout');
+                this.startButtonText.off('pointerdown');
+
                 this.startButtonText.setInteractive();
+
+                // Add hover effects for better UX
+                this.startButtonText.on('pointerover', () => {
+                    this.startButtonText?.setTint(0xff6b35); // Orange tint on hover
+                });
+
+                this.startButtonText.on('pointerout', () => {
+                    this.startButtonText?.setTint(0xffffff); // Back to white
+                });
+
                 this.startButtonText.on('pointerdown', () => {
+                    console.log('Connect wallet text clicked!'); // Debug log
                     this.handleStartAction();
                 });
             }

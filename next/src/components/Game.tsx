@@ -80,13 +80,22 @@ export default function Game() {
           HealthScene,
         ],
         scale: {
-          mode: Phaser.Scale.RESIZE,
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
         },
         parent: "game-container",
       };
 
       // Always create the game, but TitleScene will handle the wallet check
       gameRef.current = new Phaser.Game(config);
+
+      // Force a refresh of the input system after game creation
+      setTimeout(() => {
+        if (gameRef.current) {
+          gameRef.current.scale.refresh();
+          gameRef.current.input.refresh();
+        }
+      }, 100);
     }
 
     return () => {
@@ -96,6 +105,22 @@ export default function Game() {
       }
     };
   }, [isLoggedIn, userAddress]);
+
+  // Add resize handler to ensure proper scaling
+  useEffect(() => {
+    const handleResize = () => {
+      if (gameRef.current) {
+        gameRef.current.scale.refresh();
+        gameRef.current.input.refresh();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   return (
     <div className="bg-black relative">
