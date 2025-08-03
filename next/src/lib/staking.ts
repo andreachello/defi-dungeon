@@ -355,12 +355,12 @@ export async function getGamePlayer(contract: ethers.Contract, gameId: string): 
 export async function startGame(contract: ethers.Contract): Promise<{ gameId: string; wait: () => Promise<any> }> {
   const tx = await contract.startGame();
   const receipt = await tx.wait();
-  
+
   // Get gameId from event logs
   const gameStartedEvent = receipt.logs.find(
     (log: any) => log.eventName === 'GameStarted'
   );
-  
+
   return {
     gameId: gameStartedEvent?.args?.gameId || '',
     wait: () => tx.wait()
