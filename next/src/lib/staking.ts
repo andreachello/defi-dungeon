@@ -1,6 +1,4 @@
 import { ethers } from 'ethers';
-import { config } from '../config';
-import { getAccount, readContract, writeContract, getContract } from '@wagmi/core';
 
 // ABI for the staking contract
 const STAKING_ABI = [
@@ -320,138 +318,110 @@ export interface GameSession {
   startTime: number;
 }
 
-/**
- * Get the required stake amount
- */
-export async function getRequiredStake(): Promise<bigint> {
-  const data = await readContract({
-    address: STAKING_CONTRACT_ADDRESS,
-    abi: STAKING_ABI,
-    functionName: 'requiredStake',
-  });
-  return data;
+// Create contract instance
+function createContract(
+  provider: ethers.Provider | ethers.Signer,
+  address: string = STAKING_CONTRACT_ADDRESS
+): ethers.Contract {
+  return new ethers.Contract(address, STAKING_ABI, provider);
 }
 
-/**
- * Check if the user has approved enough tokens for staking
- */
-export async function checkTokenAllowance(userAddress: string): Promise<boolean> {
-  const erc20Abi = ['function allowance(address owner, address spender) view returns (uint256)'];
+// Read functions
+export async function getContractBalance(contract: ethers.Contract): Promise<bigint> {
+  return await contract.getContractBalance();
+}
+
+export async function isGameActive(contract: ethers.Contract, gameId: string): Promise<boolean> {
+  return await contract.isGameActive(gameId);
+}
+
+export async function getRequiredStake(contract: ethers.Contract): Promise<bigint> {
+  return await contract.requiredStake();
+}
+
+export async function getWinMultiplier(contract: ethers.Contract): Promise<bigint> {
+  return await contract.winMultiplier();
+}
+
+export async function getStakingToken(contract: ethers.Contract): Promise<string> {
+  return await contract.stakingToken();
+}
+
+export async function getGamePlayer(contract: ethers.Contract, gameId: string): Promise<string> {
+  return await contract.gameToPlayer(gameId);
+}
+
+// Write functions
+export async function startGame(contract: ethers.Contract): Promise<{ gameId: string; wait: () => Promise<any> }> {
+  const tx = await contract.startGame();
+  const receipt = await tx.wait();
   
-  const allowance = await readContract({
-    address: STAKING_TOKEN_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: [userAddress, STAKING_CONTRACT_ADDRESS],
-  });
-
-  const requiredStake = await getRequiredStake();
-  return allowance >= requiredStake;
-}
-
-/**
- * Approve tokens for staking
- */
-export async function approveTokens() {
-  const erc20Abi = ['function approve(address spender, uint256 amount)'];
-  const requiredStake = await getRequiredStake();
-
-  const { hash } = await writeContract({
-    address: STAKING_TOKEN_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'approve',
-    args: [STAKING_CONTRACT_ADDRESS, requiredStake],
-  });
-
-  return hash;
-}
-
-/**
- * Start a new game session
- */
-export async function startGame(): Promise<GameSession> {
-  const account = getAccount();
-  if (!account.address) throw new Error('No wallet connected');
-
-  // Check allowance first
-  const hasAllowance = await checkTokenAllowance(account.address);
-  if (!hasAllowance) {
-    throw new Error('Please approve tokens first');
-  }
-
-  const { hash } = await writeContract({
-    address: STAKING_CONTRACT_ADDRESS,
-    abi: STAKING_ABI,
-    functionName: 'startGame',
-  });
-
-  // Wait for transaction to be mined to get the game ID from events
-  const provider = new ethers.JsonRpcProvider(config.transport.url);
-  const receipt = await provider.getTransactionReceipt(hash);
+  // Get gameId from event logs
+  const gameStartedEvent = receipt.logs.find(
+    (log: any) => log.eventName === 'GameStarted'
+  );
   
-  if (!receipt) throw new Error('Transaction failed');
-
-  // Parse the GameStarted event to get the game ID
-  const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, provider);
-  const events = receipt.logs
-    .map(log => {
-      try {
-        return contract.interface.parseLog(log as any);
-      } catch {
-        return null;
-      }
-    })
-    .filter(event => event?.name === 'GameStarted');
-
-  if (!events.length) throw new Error('Could not find GameStarted event');
-
-  const gameId = events[0]?.args?.gameId;
-
   return {
-    gameId,
-    playerAddress: account.address,
-    isActive: true,
-    startTime: Date.now(),
+    gameId: gameStartedEvent?.args?.gameId || '',
+    wait: () => tx.wait()
   };
 }
 
-/**
- * End a game session
- */
-export async function endGame(gameId: string, won: boolean): Promise<string> {
-  const { hash } = await writeContract({
-    address: STAKING_CONTRACT_ADDRESS,
-    abi: STAKING_ABI,
-    functionName: 'endGame',
-    args: [gameId, won],
-  });
-
-  return hash;
+export async function endGame(
+  contract: ethers.Contract,
+  gameId: string,
+  won: boolean
+): Promise<{ wait: () => Promise<any> }> {
+  const tx = await contract.endGame(gameId, won);
+  return {
+    wait: () => tx.wait()
+  };
 }
 
-/**
- * Check if a game is active
- */
-export async function isGameActive(gameId: string): Promise<boolean> {
-  const isActive = await readContract({
-    address: STAKING_CONTRACT_ADDRESS,
-    abi: STAKING_ABI,
-    functionName: 'isGameActive',
-    args: [gameId],
-  });
-
-  return isActive;
+// Admin functions
+export async function emergencyWithdraw(
+  contract: ethers.Contract
+): Promise<{ wait: () => Promise<any> }> {
+  const tx = await contract.emergencyWithdraw();
+  return {
+    wait: () => tx.wait()
+  };
 }
 
-/**
- * Get contract token balance
- */
-export async function getContractBalance(): Promise<bigint> {
-  const balance = await readContract({
-    address: STAKING_CONTRACT_ADDRESS,
-    abi: STAKING_ABI,
-    functionName: 'getContractBalance',
-  });
+export async function transferOwnership(
+  contract: ethers.Contract,
+  newOwner: string
+): Promise<{ wait: () => Promise<any> }> {
+  const tx = await contract.transferOwnership(newOwner);
+  return {
+    wait: () => tx.wait()
+  };
+}
 
-  return balance;
+// Event listeners
+export function subscribeToGameStarted(
+  contract: ethers.Contract,
+  callback: (player: string, gameId: string) => void
+): Promise<ethers.Contract> {
+  return contract.on('GameStarted', (player, gameId) => {
+    callback(player, gameId);
+  });
+}
+
+export function subscribeToGameEnded(
+  contract: ethers.Contract,
+  callback: (player: string, gameId: string, won: boolean) => void
+): Promise<ethers.Contract> {
+  return contract.on('GameEnded', (player, gameId, won) => {
+    callback(player, gameId, won);
+  });
+}
+
+export function removeAllListeners(contract: ethers.Contract): void {
+  contract.removeAllListeners();
+}
+
+// Helper function to get a configured contract instance
+export function getStakingContract(provider: ethers.Provider | ethers.Signer): ethers.Contract {
+  return createContract(provider);
 }
