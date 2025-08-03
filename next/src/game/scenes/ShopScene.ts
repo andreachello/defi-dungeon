@@ -1,6 +1,9 @@
 import Phaser from "phaser";
 import Fonts from "../assets/Fonts";
 import Graphics from "../assets/Graphics";
+import Item from "../entities/Item";
+import { ItemType } from "../entities/Item";
+import PersistenceService, { SavedInventoryItem } from "../services/PersistenceService";
 
 interface ShopItem {
     name: string;
@@ -263,8 +266,35 @@ export default class ShopScene extends Phaser.Scene {
             // Add visual feedback
             this.showPurchaseEffect(itemIndex);
 
-            // Here you would typically add the item to the player's inventory
-            console.log(`Bought ${item.name} for ${item.price} gold`);
+            // Create the item and add to player's inventory
+            const itemData = {
+                id: item.name.toLowerCase().replace(/\s+/g, '_'),
+                name: item.name,
+                type: item.type === 'potion' ? ItemType.HEALTH_POTION : ItemType.SPEED_POTION,
+                spriteIndex: item.spriteIndex,
+                stackable: true,
+                description: item.description
+            };
+
+            const newItem = new Item(itemData, 1);
+
+            // Get the player from the DungeonScene and add item to inventory
+            const dungeonScene = this.scene.get("DungeonScene") as any;
+            if (dungeonScene && dungeonScene.player) {
+                const added = dungeonScene.player.addItemToInventory(newItem);
+                if (added) {
+                    console.log(`Bought ${item.name} for ${item.price} gold and added to inventory`);
+                    // Emit event to update inventory display
+                    this.scene.events.emit('inventoryUpdated');
+                } else {
+                    console.log('Inventory is full!');
+                    // Could show a message to the player
+                }
+            } else {
+                console.log('Player not found, storing item for next game session');
+                // Store the item for when the player is created
+                this.storeItemForNextSession(newItem);
+            }
         } else {
             this.showInsufficientFundsMessage();
         }
@@ -308,5 +338,11 @@ export default class ShopScene extends Phaser.Scene {
         if (this.goldText) {
             this.goldText.setText(`GOLD: ${this.playerGold}`);
         }
+    }
+
+    private storeItemForNextSession(item: Item): void {
+        // This could be enhanced to store items that will be given to the player
+        // when they start a new game session
+        console.log('Storing item for next session:', item);
     }
 } 

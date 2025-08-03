@@ -75,10 +75,14 @@ export default class InventoryScene extends Phaser.Scene {
 
     private setPlayer(player: Player) {
         this.player = player;
+        console.log("InventoryScene: Player reference set");
+
+        // Update display immediately when player is set
         this.updateInventoryDisplay();
     }
 
     private handleInventoryUpdate() {
+        console.log("InventoryScene: Received updateInventory event");
         this.updateInventoryDisplay();
     }
 
@@ -187,8 +191,8 @@ export default class InventoryScene extends Phaser.Scene {
     }
 
     private updateInventoryDisplay() {
+        // Try to get player reference if we don't have one
         if (!this.player) {
-            // Try to get player from DungeonScene
             const dungeonScene = this.scene.get("DungeonScene") as any;
             if (dungeonScene && dungeonScene.player) {
                 this.player = dungeonScene.player;
@@ -198,16 +202,23 @@ export default class InventoryScene extends Phaser.Scene {
         }
 
         const items = this.player.inventory.getAllItems();
+        console.log("InventoryScene: Updating display with", items.length, "items");
 
         // Clear all slots
         this.itemSprites.forEach(sprite => {
-            sprite.setVisible(false);
+            if (sprite && sprite.active) {
+                sprite.setVisible(false);
+            }
         });
         this.itemTexts.forEach(text => {
-            text.setText("");
+            if (text && text.active) {
+                text.setText("");
+            }
         });
         this.hoverTexts.forEach(text => {
-            text.setVisible(false);
+            if (text && text.active) {
+                text.setVisible(false);
+            }
         });
 
         // Fill slots with items
@@ -216,10 +227,12 @@ export default class InventoryScene extends Phaser.Scene {
                 const sprite = this.itemSprites[index];
                 const text = this.itemTexts[index];
 
-                sprite.setFrame(item.data.spriteIndex);
-                sprite.setVisible(true);
+                if (sprite && sprite.active) {
+                    sprite.setFrame(item.data.spriteIndex);
+                    sprite.setVisible(true);
+                }
 
-                if (item.quantity > 1) {
+                if (text && text.active && item.quantity > 1) {
                     text.setText(item.quantity.toString());
                 }
             }
