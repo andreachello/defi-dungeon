@@ -163,9 +163,12 @@ export default class DungeonScene extends Phaser.Scene {
     this.boss = map.boss;
     if (this.boss) {
       this.physics.add.collider(this.player!.sprite, this.boss.sprite, () => {
-        // Player takes damage if touching boss
-        this.player!.takeDamage(1);
-        this.player!.stagger();
+        // Only inflict damage if player is not attacking
+        if (!this.player!.isAttacking()) {
+          // Boss inflicts exactly 1 full heart of damage
+          this.player!.takeDamage(1.0);
+          this.player!.stagger();
+        }
       });
     }
 

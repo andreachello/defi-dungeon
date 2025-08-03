@@ -220,7 +220,14 @@ export default class Map {
         // SPAWN BOSS IN BOSS ROOM
         const bossX = Phaser.Math.Between(roomTL.x, roomBounds.x);
         const bossY = Phaser.Math.Between(roomTL.y, roomBounds.y);
-        this.boss = new Boss(bossX, bossY, scene);
+
+        // Pass the boss room bounds to the boss
+        this.boss = new Boss(bossX, bossY, scene, {
+          x: room.x,
+          y: room.y,
+          width: room.width,
+          height: room.height
+        });
         continue; // Don't spawn slimes in boss room
       }
     }
