@@ -3,9 +3,10 @@ import Graphics from "../assets/Graphics";
 import DungeonScene from "../scenes/DungeonScene";
 import Item from "./Item";
 import Player from "./Player";
+import Chest from "./Chest";
 
 const BOSS_SPEED = 30;
-const BOSS_HEARTS = 10;
+const BOSS_HEARTS = 1;
 
 // Boss states
 enum BossState {
@@ -204,7 +205,7 @@ export default class Boss {
             );
 
             if (direction.length() > 5) {
-                
+
                 direction.normalize();
                 this.body.setVelocity(
                     direction.x * BOSS_SPEED * 2,
@@ -304,28 +305,18 @@ export default class Boss {
     }
 
     private spawnLoot() {
-        // Drop several items on death
-        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
-            const item = Item.createGoldKey();
-            const itemSprite = this.scene.physics.add.sprite(
-                this.sprite.x + Phaser.Math.Between(-16, 16),
-                this.sprite.y + Phaser.Math.Between(-16, 16),
-                Graphics.items.name,
-                item.data.spriteIndex
-            );
-            itemSprite.setOrigin(0.5, 0.5);
-            itemSprite.setDepth(5);
-            (itemSprite as any).itemData = item;
+        // Spawn a boss chest instead of random items
+        const bossChest = new Chest(this.sprite.x, this.sprite.y, this.scene, true); // true = isBossChest
 
-            this.scene.physics.add.overlap(
-                this.scene.player!.sprite,
-                itemSprite,
-                () => {
-                    if (this.scene.player!.addItemToInventory(item)) {
-                        itemSprite.destroy();
-                    }
-                }
-            );
+        // Add the chest to the scene's chest group
+        const dungeonScene = this.scene as DungeonScene;
+        if (dungeonScene.chests) {
+            dungeonScene.chests.push(bossChest);
+            if (dungeonScene.chestGroup) {
+                dungeonScene.chestGroup.add(bossChest.sprite);
+            }
         }
+
+        console.log(`Boss defeated! Boss chest spawned at (${this.sprite.x}, ${this.sprite.y})`);
     }
 } 
