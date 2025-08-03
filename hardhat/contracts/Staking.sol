@@ -27,7 +27,7 @@ interface IAggregationRouterV5 {
 
 contract GameStaking is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-
+g
     IERC20 public immutable stakingToken;  // USDC
     IERC20 public immutable rewardToken;   // 1INCH token
     IAggregationRouterV5 public immutable oneInchRouter;
@@ -96,7 +96,7 @@ contract GameStaking is Ownable, ReentrancyGuard {
             }
 
             // Approve 1inch router to spend our USDC
-            stakingToken.safeApprove(address(oneInchRouter), payout);
+            stakingToken.approve(address(oneInchRouter), payout);
             
             // Perform the swap through 1inch
             (uint256 returnAmount,) = oneInchRouter.swap(
@@ -113,6 +113,9 @@ contract GameStaking is Ownable, ReentrancyGuard {
                 "", // permit
                 swapData // Get this from 1inch API
             );
+            
+            // Reset approval to 0 for safety
+            stakingToken.approve(address(oneInchRouter), 0);
             
             emit GameEnded(msg.sender, gameId, true, returnAmount);
         } else {
@@ -138,6 +141,6 @@ contract GameStaking is Ownable, ReentrancyGuard {
 
     // Emergency function to revoke approvals if needed
     function revokeApproval() external {
-        stakingToken.safeApprove(address(oneInchRouter), 0);
+        stakingToken.approve(address(oneInchRouter), 0);
     }
 }
