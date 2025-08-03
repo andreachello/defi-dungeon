@@ -27,7 +27,7 @@ interface IAggregationRouterV5 {
 
 contract GameStaking is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-g
+
     IERC20 public immutable stakingToken;  // USDC
     IERC20 public immutable rewardToken;   // 1INCH token
     IAggregationRouterV5 public immutable oneInchRouter;
