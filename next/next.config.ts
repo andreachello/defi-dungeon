@@ -38,6 +38,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["phaser"],
   env: {
     projectID: process.env.PROJECT_ID,
+    apiKey: process.env.API_KEY,
+    NEXT_PUBLIC_STAKING_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_STAKING_CONTRACT_ADDRESS,
+    NEXT_PUBLIC_STAKING_TOKEN_ADDRESS: process.env.NEXT_PUBLIC_STAKING_TOKEN_ADDRESS,
   },
   compilerOptions: {
     baseUrl: "src/",
