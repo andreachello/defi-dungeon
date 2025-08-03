@@ -34,6 +34,11 @@ const modal = createAppKit({
   },
 });
 
+// Make modal available globally
+if (typeof window !== "undefined") {
+  (window as any).appkitModal = modal;
+}
+
 function ContextProvider({
   children,
   cookies,

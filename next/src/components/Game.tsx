@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
+import TitleScene from "../game/scenes/TitleScene";
 import DungeonScene from "../game/scenes/DungeonScene";
 import InfoScene from "../game/scenes/InfoScene";
 import InventoryScene from "../game/scenes/InventoryScene";
@@ -16,8 +17,47 @@ export default function Game() {
 
   const { isLoggedIn, userAddress, login, logout } = useAuth();
 
+  // Set up event listener for wallet connection
+  useEffect(() => {
+    const handleConnectWallet = () => {
+      console.log("Connect wallet event received!");
+
+      // Try to open the AppKit modal directly
+      const appkitModal = (window as any).appkitModal;
+      if (appkitModal && appkitModal.open) {
+        console.log("Opening AppKit modal...");
+        appkitModal.open();
+      } else {
+        console.log("AppKit modal not found, trying to trigger appkit-button...");
+        // Fallback to triggering the button
+        const appkitButton = document.querySelector('appkit-button');
+        if (appkitButton) {
+          console.log("Found appkit-button, dispatching click event...");
+          appkitButton.dispatchEvent(new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          }));
+        } else {
+          console.log("No appkit-button found, falling back to login function");
+          login(); // Final fallback
+        }
+      }
+    };
+
+    window.addEventListener('connectWallet', handleConnectWallet);
+
+    return () => {
+      window.removeEventListener('connectWallet', handleConnectWallet);
+    };
+  }, [login]);
+
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
+      // Make wallet status available to Phaser scenes
+      (window as any).walletConnected = isLoggedIn;
+      (window as any).userAddress = userAddress;
+
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.WEBGL,
         width: window.innerWidth,
@@ -31,6 +71,7 @@ export default function Game() {
           },
         },
         scene: [
+          TitleScene,
           DungeonScene,
           InfoScene,
           InventoryScene,
@@ -44,7 +85,8 @@ export default function Game() {
         parent: "game-container",
       };
 
-      isLoggedIn && (gameRef.current = new Phaser.Game(config));
+      // Always create the game, but TitleScene will handle the wallet check
+      gameRef.current = new Phaser.Game(config);
     }
 
     return () => {
@@ -53,7 +95,7 @@ export default function Game() {
         gameRef.current = null;
       }
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, userAddress]);
 
   return (
     <div className="bg-black relative">
