@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import Phaser from 'phaser';
-import DungeonScene from '../game/scenes/DungeonScene';
-import InfoScene from '../game/scenes/InfoScene';
-import InventoryScene from '../game/scenes/InventoryScene';
-import MinimapScene from '../game/scenes/MinimapScene';
-import TimerScene from '../game/scenes/TimerScene';
-import HealthScene from '../game/scenes/HealthScene';
+import { useEffect, useRef } from "react";
+import Phaser from "phaser";
+import DungeonScene from "../game/scenes/DungeonScene";
+import InfoScene from "../game/scenes/InfoScene";
+import InventoryScene from "../game/scenes/InventoryScene";
+import MinimapScene from "../game/scenes/MinimapScene";
+import TimerScene from "../game/scenes/TimerScene";
+import HealthScene from "../game/scenes/HealthScene";
+import WalletConnectButton from "./WalletConnectButton";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
 
+  const { isLoggedIn, userAddress, login, logout } = useAuth();
+
   useEffect(() => {
-    if (typeof window !== 'undefined' && !gameRef.current) {
+    if (typeof window !== "undefined" && !gameRef.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.WEBGL,
         width: window.innerWidth,
         height: window.innerHeight,
         render: { pixelArt: true },
         physics: {
-          default: 'arcade',
+          default: "arcade",
           arcade: {
             debug: false,
-            gravity: { y: 0 }
-          }
+            gravity: { y: 0 },
+          },
         },
         scene: [
           DungeonScene,
@@ -32,15 +36,15 @@ export default function Game() {
           InventoryScene,
           MinimapScene,
           TimerScene,
-          HealthScene
+          HealthScene,
         ],
         scale: {
-          mode: Phaser.Scale.RESIZE
+          mode: Phaser.Scale.RESIZE,
         },
-        parent: 'game-container'
+        parent: "game-container",
       };
 
-      gameRef.current = new Phaser.Game(config);
+      isLoggedIn && (gameRef.current = new Phaser.Game(config));
     }
 
     return () => {
@@ -49,7 +53,18 @@ export default function Game() {
         gameRef.current = null;
       }
     };
-  }, []);
+  }, [isLoggedIn]);
 
-  return <div id="game-container" style={{ width: '100vw', height: '100vh' }} />;
-} 
+  return (
+    <div className="bg-black">
+      <div className="flex justify-end pr-4 pt-4">
+        <WalletConnectButton />
+      </div>
+
+      <div
+        id="game-container"
+        style={{ width: "100vw", height: "100vh", backgroundColor: "black" }}
+      ></div>
+    </div>
+  );
+}
