@@ -4,9 +4,10 @@ import axios from 'axios';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const amount = searchParams.get('amount');
+  const receiver = searchParams.get('receiver'); // Add receiver parameter
 
-  if (!amount) {
-    return NextResponse.json({ error: 'Amount is required' }, { status: 400 });
+  if (!amount || !receiver) {
+    return NextResponse.json({ error: 'Amount and receiver are required' }, { status: 400 });
   }
 
   const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -14,19 +15,6 @@ export async function GET(request: Request) {
   const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200";
 
   try {
-    // First, get the quote to check the swap is possible
-    const quoteResponse = await axios.get('https://api.1inch.dev/swap/v6.1/8453/quote', {
-      headers: {
-        'Authorization': `Bearer ${process.env.apiKey}`
-      },
-      params: {
-        fromTokenAddress: USDC_ADDRESS,
-        toTokenAddress: ONEINCH_TOKEN_ADDRESS,
-        amount: amount
-      }
-    });
-
-    // Then get the swap data with flags to skip pre-checks
     const swapResponse = await axios.get('https://api.1inch.dev/swap/v6.1/8453/swap', {
       headers: {
         'Authorization': `Bearer ${process.env.apiKey}`
@@ -39,7 +27,8 @@ export async function GET(request: Request) {
         slippage: 1,
         disableEstimate: true, // Skip balance and allowance checks
         allowPartialFill: false,
-        compatibilityMode: true // Add this to ensure compatibility
+        compatibilityMode: true, // Add this to ensure compatibility
+        receiver: receiver, // Use the provided receiver address
       }
     });
 

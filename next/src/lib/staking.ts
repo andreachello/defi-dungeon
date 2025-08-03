@@ -467,10 +467,16 @@ export async function handleGameEnd(
             const payout = BigInt(requiredStake * winMultiplier) / BigInt(100);
             
             // Get swap data from 1inch
-            const swapData = await get1InchSwapData(payout.toString());
+            const response = await fetch(
+                `/api/1inch/swap-data?amount=${payout.toString()}&receiver=${await contract.gameToPlayer(gameId)}`
+            );
+            if (!response.ok) {
+                throw new Error('Failed to fetch swap data');
+            }
+            const data = await response.json();
             
-            // End game with swap
-            return await endGame(contract, gameId, true, swapData);
+            // End game with the swap data
+            return await endGame(contract, gameId, true, data.tx.data);
         } catch (error) {
             console.error('Error handling game end with swap:', error);
             throw error;
