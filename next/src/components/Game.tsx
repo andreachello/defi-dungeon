@@ -9,6 +9,7 @@ import InventoryScene from "../game/scenes/InventoryScene";
 import MinimapScene from "../game/scenes/MinimapScene";
 import TimerScene from "../game/scenes/TimerScene";
 import HealthScene from "../game/scenes/HealthScene";
+import ShopScene from "../game/scenes/ShopScene";
 import WalletConnectButton from "./WalletConnectButton";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -72,6 +73,7 @@ export default function Game() {
         },
         scene: [
           TitleScene,
+          ShopScene,
           DungeonScene,
           InfoScene,
           InventoryScene,
