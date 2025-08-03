@@ -11,31 +11,43 @@ const nextConfig: NextConfig = {
     // Add support for static assets
     config.module.rules.push({
       test: /\.(png|jpg|gif|svg|mp3|wav)$/i,
-      type: 'asset/resource'
+      type: "asset/resource",
     });
 
     config.module.rules.push({
       test: /\.tsx?$/,
       exclude: /node_modules/,
       use: {
-        loader: 'ts-loader',
+        loader: "ts-loader",
         options: {
-          transpileOnly: true
-        }
-      }
+          transpileOnly: true,
+        },
+      },
     });
 
     config.resolve.alias = {
       ...config.resolve.alias,
-      'phaser': require.resolve('phaser')
+      phaser: require.resolve("phaser"),
     };
 
     return config;
   },
   images: {
-    unoptimized: true
+    unoptimized: true,
   },
-  transpilePackages: ['phaser']
+  transpilePackages: ["phaser"],
+  env: {
+    projectID: process.env.PROJECT_ID,
+  },
+  compilerOptions: {
+    baseUrl: "src/",
+    paths: {
+      "@/styles/*": ["styles/*"],
+      "@/components/*": ["components/*"],
+      "@/config/*": ["config/*"],
+      "@/context/*": ["context/*"],
+    },
+  },
 };
 
 export default nextConfig;
