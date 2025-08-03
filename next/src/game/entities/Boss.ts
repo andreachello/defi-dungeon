@@ -5,7 +5,7 @@ import Item from "./Item";
 import Player from "./Player";
 
 const BOSS_SPEED = 30;
-const BOSS_HEARTS = 10; 
+const BOSS_HEARTS = 10;
 
 // Boss states
 enum BossState {
@@ -79,7 +79,7 @@ export default class Boss {
         // Update health UI position to follow the boss closely
         if (this.healthUI && !this.isDead) {
             this.healthUI.setPosition(
-                this.sprite.x - (this.heartSprites.length * 4), 
+                this.sprite.x - (this.heartSprites.length * 4),
                 this.sprite.y - 20
             );
         }
@@ -204,6 +204,7 @@ export default class Boss {
             );
 
             if (direction.length() > 5) {
+                
                 direction.normalize();
                 this.body.setVelocity(
                     direction.x * BOSS_SPEED * 2,
@@ -252,9 +253,12 @@ export default class Boss {
         // Update heart sprites based on current health
         for (let i = 0; i < this.heartSprites.length; i++) {
             const heartSprite = this.heartSprites[i];
-            if (i < this.health) {
+            if (i < Math.floor(this.health)) {
                 // Full heart
                 heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.full);
+            } else if (i < Math.ceil(this.health) && this.health % 1 !== 0) {
+                // Half heart (if there's a decimal part)
+                heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.half);
             } else {
                 // Empty heart
                 heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.empty);
@@ -266,6 +270,10 @@ export default class Boss {
             this.sprite.x - (this.heartSprites.length * 4),
             this.sprite.y - 20
         );
+    }
+
+    public getHealth(): number {
+        return this.health;
     }
 
     takeDamage(amount: number) {

@@ -31,6 +31,9 @@ export default class DungeonScene extends Phaser.Scene {
   private inventorySprites: Phaser.GameObjects.Sprite[] = [];
   private inventoryTexts: Phaser.GameObjects.Text[] = [];
 
+  private bossAttackCooldown: number = 0;
+  private readonly BOSS_ATTACK_COOLDOWN = 500; // 0.5 seconds in milliseconds
+
   preload(): void {
     this.load.spritesheet(Graphics.environment.name, Graphics.environment.file, {
       frameWidth: Graphics.environment.width,
@@ -355,6 +358,25 @@ export default class DungeonScene extends Phaser.Scene {
 
     // Update FOV radius if vision boost is active
     // The FOV layer will handle its own visibility based on vision boost status
+
+    // Update boss attack cooldown
+    if (this.bossAttackCooldown > 0) {
+      this.bossAttackCooldown -= delta;
+    }
+
+    // Check if player is attacking the boss
+    if (this.player && this.player.isAttacking() && this.boss && this.bossAttackCooldown <= 0) {
+      // Check if player's attack hitbox overlaps with boss
+      const playerBounds = this.player.sprite.getBounds();
+      const bossBounds = this.boss.sprite.getBounds();
+
+      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, bossBounds)) {
+        // Player hit the boss
+        this.boss.takeDamage(0.5); // Deal half a heart of damage
+        this.bossAttackCooldown = this.BOSS_ATTACK_COOLDOWN; // Start cooldown
+        console.log(`Player hit boss! Boss health: ${this.boss.getHealth()}`);
+      }
+    }
   }
 
   // Add the missing playerItemCollide method

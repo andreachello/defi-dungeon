@@ -18,6 +18,7 @@ export default class Slime {
   private map: DungeonMap;
   public dropsGoldKey: boolean = false;
   public dropsBossKey: boolean = false;
+  public dropsBossRoomItems: boolean = false;
 
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
@@ -79,10 +80,14 @@ export default class Slime {
     console.log(`Spawning ${numItems} items`);
 
     for (let i = 0; i < numItems; i++) {
-      // Randomly choose item type, but respect the drop type
       let item: Item;
 
-      if (this.dropsGoldKey) {
+      if (this.dropsBossRoomItems) {
+        // Boss room slimes drop only health potions (100%)
+        item = Item.createHealthPotion();
+        console.log(`Creating heart potion (100% chance)`);
+        console.log(`Creating boss room potion: ${item.data.name}`);
+      } else if (this.dropsGoldKey) {
         // Slimes in locked rooms drop gold keys
         item = Item.createGoldKey();
         console.log(`Creating gold key item: ${item.data.name} with sprite index: ${item.data.spriteIndex}`);

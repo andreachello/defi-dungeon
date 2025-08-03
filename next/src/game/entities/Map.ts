@@ -151,72 +151,14 @@ export default class Map {
         continue;
       }
 
-      // Check if this room is locked
-      const isLocked = this.lockedRooms.has(roomIndex);
-      const isGoldLocked = this.goldLockedRooms.has(roomIndex);
-      const isBossRoom = this.bossLockedRooms.has(roomIndex);
-
       const roomTL = this.tilemap.tileToWorldXY(room.x + 1, room.y + 1);
       const roomBounds = this.tilemap.tileToWorldXY(
         room.x + room.width - 1,
         room.y + room.height - 1
       );
 
-      // Spawn chest in normal rooms with 40% chance
-      if (!isLocked && !isGoldLocked && !isBossRoom) {
-        const chestChance = Math.random();
-        if (chestChance < 0.4) { // 40% chance
-          console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
-          this.placeChestInRoom(room, roomTL, roomBounds);
-        } else {
-          console.log(`Room ${roomIndex} - no chest (rolled ${chestChance.toFixed(2)})`);
-        }
-      } else {
-        console.log(`Room ${roomIndex} is locked - no chest placed`);
-      }
-
-      // Increase slime count based on room type
-      let numSlimes: number;
-      if (isLocked || isGoldLocked || isBossRoom) {
-        // Locked rooms have more enemies (3-6 slimes)
-        numSlimes = Phaser.Math.Between(3, 6);
-      } else {
-        // Normal rooms have fewer enemies (1-3 slimes)
-        numSlimes = Phaser.Math.Between(1, 3);
-      }
-
-      for (let i = 0; i < numSlimes; i++) {
-        const slime = new Slime(
-          Phaser.Math.Between(roomTL.x, roomBounds.x),
-          Phaser.Math.Between(roomTL.y, roomBounds.y),
-          scene
-        );
-
-        // Mark slimes in locked rooms to drop appropriate keys
-        if (isBossRoom) {
-          // Boss rooms don't drop boss keys anymore
-          (slime as any).dropsGoldKey = true;
-        } else if (isGoldLocked) {
-          // Check if player already has a boss key
-          const player = (scene as DungeonScene).player;
-          const hasBossKey = player && player.inventory.hasItem("boss_key");
-
-          if (!hasBossKey) {
-            // Only drop boss key if player doesn't have one
-            (slime as any).dropsBossKey = true;
-            console.log(`Boss key assigned to slime in gold locked room ${roomIndex}`);
-          } else {
-            // Player already has boss key, drop gold key instead
-            (slime as any).dropsGoldKey = true;
-          }
-        } else if (isLocked) {
-          (slime as any).dropsGoldKey = true;
-        }
-
-        this.slimes.push(slime);
-      }
-
-      if (isBossRoom) {
+      // Handle boss room first (before regular slime spawning)
+      if (this.bossLockedRooms.has(roomIndex)) {
         // SPAWN BOSS IN BOSS ROOM
         const bossX = Phaser.Math.Between(roomTL.x, roomBounds.x);
         const bossY = Phaser.Math.Between(roomTL.y, roomBounds.y);
@@ -228,7 +170,78 @@ export default class Map {
           width: room.width,
           height: room.height
         });
-        continue; // Don't spawn slimes in boss room
+
+        // Spawn slimes in boss room that drop only potions
+        const numSlimes = Phaser.Math.Between(6, 10); // Increased from (3, 6) to (6, 10)
+        for (let i = 0; i < numSlimes; i++) {
+          const slime = new Slime(
+            Phaser.Math.Between(roomTL.x, roomBounds.x),
+            Phaser.Math.Between(roomTL.y, roomBounds.y),
+            scene
+          );
+
+          // Mark slimes in boss room to drop only potions (NO GOLD KEYS!)
+          (slime as any).dropsBossRoomItems = true;
+
+          // Add to slimes array so they get collision detection
+          this.slimes.push(slime);
+        }
+
+        continue; // Skip regular slime spawning for boss rooms
+      }
+
+      // Regular slime spawning logic (only for non-boss rooms)
+      if (!this.lockedRooms.has(roomIndex) && !this.goldLockedRooms.has(roomIndex)) {
+        // Increase slime count based on room type
+        let numSlimes: number;
+        if (this.lockedRooms.has(roomIndex) || this.goldLockedRooms.has(roomIndex)) {
+          // Locked rooms have more enemies (3-6 slimes)
+          numSlimes = Phaser.Math.Between(3, 6);
+        } else {
+          // Normal rooms have fewer enemies (1-3 slimes)
+          numSlimes = Phaser.Math.Between(1, 3);
+        }
+
+        for (let i = 0; i < numSlimes; i++) {
+          const slime = new Slime(
+            Phaser.Math.Between(roomTL.x, roomBounds.x),
+            Phaser.Math.Between(roomTL.y, roomBounds.y),
+            scene
+          );
+
+          // Mark slimes in locked rooms to drop appropriate keys
+          if (this.goldLockedRooms.has(roomIndex)) {
+            // Check if player already has a boss key
+            const player = (scene as DungeonScene).player;
+            const hasBossKey = player && player.inventory.hasItem("boss_key");
+
+            if (!hasBossKey) {
+              // Only drop boss key if player doesn't have one
+              (slime as any).dropsBossKey = true;
+              console.log(`Boss key assigned to slime in gold locked room ${roomIndex}`);
+            } else {
+              // Player already has boss key, drop gold key instead
+              (slime as any).dropsGoldKey = true;
+            }
+          } else if (this.lockedRooms.has(roomIndex)) {
+            (slime as any).dropsGoldKey = true;
+          }
+
+          this.slimes.push(slime);
+        }
+      }
+
+      // Spawn chest in normal rooms with 40% chance
+      if (!this.lockedRooms.has(roomIndex) && !this.goldLockedRooms.has(roomIndex)) {
+        const chestChance = Math.random();
+        if (chestChance < 0.4) { // 40% chance
+          console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
+          this.placeChestInRoom(room, roomTL, roomBounds);
+        } else {
+          console.log(`Room ${roomIndex} - no chest (rolled ${chestChance.toFixed(2)})`);
+        }
+      } else {
+        console.log(`Room ${roomIndex} is locked - no chest placed`);
       }
     }
 
