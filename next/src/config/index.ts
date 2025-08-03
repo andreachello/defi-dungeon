@@ -19,6 +19,9 @@ export const wagmiAdapter = new WagmiAdapter({
   ssr: true,
   projectId,
   networks,
+  transports: {
+    [mainnet.id]: http(process.env.NEXT_PUBLIC_1INCH_RPC_URL as string)
+  }
 });
 
 export const config = wagmiAdapter.wagmiConfig;
