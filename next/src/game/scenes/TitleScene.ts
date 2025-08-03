@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import Fonts from "../assets/Fonts";
 import Graphics from "../assets/Graphics";
+import GameStakingService from "../services/GameStakingService";
 
 export default class TitleScene extends Phaser.Scene {
     private titleText?: Phaser.GameObjects.DynamicBitmapText;
@@ -15,9 +16,13 @@ export default class TitleScene extends Phaser.Scene {
     private shopButtonText?: Phaser.GameObjects.DynamicBitmapText;
     private isTransitioning: boolean = false;
     private walletConnected: boolean = false;
+    private stakingService: GameStakingService;
+    private loadingText?: Phaser.GameObjects.DynamicBitmapText;
+    private isStartingGame: boolean = false;
 
     constructor() {
         super({ key: "TitleScene" });
+        this.stakingService = GameStakingService.getInstance();
     }
 
     preload(): void {
@@ -40,6 +45,24 @@ export default class TitleScene extends Phaser.Scene {
 
         // Check wallet connection status
         this.walletConnected = (window as any).walletConnected || false;
+        console.log('TitleScene: Wallet connected:', this.walletConnected);
+
+        // Initialize staking service if wallet is connected
+        if (this.walletConnected) {
+            console.log('TitleScene: Initializing staking service...');
+            this.stakingService.initialize().then(success => {
+                console.log('TitleScene: Staking service initialization result:', success);
+                if (!success) {
+                    console.error('Failed to initialize staking service');
+                    this.walletConnected = false;
+                    this.updateButtonText();
+                }
+            }).catch(error => {
+                console.error('TitleScene: Error initializing staking service:', error);
+                this.walletConnected = false;
+                this.updateButtonText();
+            });
+        }
 
         // Create dark background
         this.background = this.add.rectangle(0, 0, width, height, 0x000000);
@@ -54,28 +77,6 @@ export default class TitleScene extends Phaser.Scene {
         // Create decorative background elements
         this.createBackgroundDecoration();
 
-        // Create main title
-        // this.titleText = this.add.dynamicBitmapText(
-        //     width / 2,
-        //     height * 0.15,
-        //     "default",
-        //     "DUNGEONHEIM",
-        //     48
-        // );
-        // this.titleText.setOrigin(0.5);
-        // this.titleText.setTint(0xff6b35); // Orange color for the title
-
-        // // Create subtitle
-        // this.subtitleText = this.add.dynamicBitmapText(
-        //     width / 2,
-        //     height * 0.15 + 80,
-        //     "default",
-        //     "A DeFi Dungeon Adventure",
-        //     16
-        // );
-        // this.subtitleText.setOrigin(0.5);
-        // this.subtitleText.setTint(0xcccccc);
-
         // Create start button
         this.createStartButton();
 
@@ -85,10 +86,13 @@ export default class TitleScene extends Phaser.Scene {
         // Add title animation
         this.animateTitle();
 
-        // Remove the global click handler - we'll handle clicks only on the button/text
-        // this.input.on('pointerdown', () => {
-        //     this.handleStartAction();
-        // });
+        // Check for existing game session
+        const currentSession = this.stakingService.getCurrentSession();
+        if (currentSession && currentSession.isActive) {
+            console.log('Found active game session:', currentSession);
+            // Show option to continue or restart
+            this.showContinueGameOption(currentSession);
+        }
     }
 
     private createCoverBackground(): void {
@@ -198,17 +202,21 @@ export default class TitleScene extends Phaser.Scene {
 
             // Add hover effects
             this.startButton.on('pointerover', () => {
-                this.startButton?.setStrokeStyle(3, 0xff8c42);
-                this.startButtonText?.setTint(0xffffff); // Keep white on hover
+                if (!this.isStartingGame) {
+                    this.startButton?.setStrokeStyle(3, 0xff8c42);
+                    this.startButtonText?.setTint(0xffffff);
+                }
             });
 
             this.startButton.on('pointerout', () => {
                 this.startButton?.setStrokeStyle(2, 0xff6b35);
-                this.startButtonText?.setTint(0xffffff); // Keep white
+                this.startButtonText?.setTint(0xffffff);
             });
 
             this.startButton.on('pointerdown', () => {
-                this.handleStartAction();
+                if (!this.isStartingGame) {
+                    this.handleStartAction();
+                }
             });
 
             // Add pulsing animation to button
@@ -353,20 +361,199 @@ export default class TitleScene extends Phaser.Scene {
         });
     }
 
+    private showContinueGameOption(session: any): void {
+        const { width, height } = this.scale;
+
+        // Create continue game text
+        const continueText = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.65,
+            "default",
+            "CONTINUE GAME",
+            16
+        );
+        continueText.setOrigin(0.5);
+        continueText.setTint(0x00ff00); // Green color
+        continueText.setDepth(10);
+
+        // Create continue button background
+        const continueButton = this.add.rectangle(
+            width / 2,
+            height * 0.65,
+            180,
+            50,
+            0x333333,
+            0.8
+        );
+        continueButton.setStrokeStyle(2, 0x00ff00);
+        continueButton.setInteractive();
+        continueButton.setDepth(9);
+
+        // Add hover effects
+        continueButton.on('pointerover', () => {
+            continueButton.setStrokeStyle(3, 0x00cc00);
+            continueText.setTint(0x00ff00);
+        });
+
+        continueButton.on('pointerout', () => {
+            continueButton.setStrokeStyle(2, 0x00ff00);
+            continueText.setTint(0x00ff00);
+        });
+
+        continueButton.on('pointerdown', () => {
+            this.continueGame(session);
+        });
+
+        // Update start button text
+        if (this.startButtonText) {
+            this.startButtonText.setText("NEW GAME");
+        }
+    }
+
+    private continueGame(session: any): void {
+        console.log('Continuing game session:', session);
+        // Store session info for the game to use
+        (window as any).currentGameSession = session;
+        this.startGame();
+    }
+
     private handleStartAction(): void {
+        console.log('TitleScene: handleStartAction called, walletConnected:', this.walletConnected);
         if (this.walletConnected) {
-            this.startGame();
+            console.log('TitleScene: Starting game with staking...');
+            this.startGameWithStaking();
         } else {
+            console.log('TitleScene: Dispatching connectWallet event...');
             // Dispatch custom event to trigger wallet connection modal
             const connectWalletEvent = new CustomEvent('connectWallet');
             window.dispatchEvent(connectWalletEvent);
         }
     }
 
-    private showConnectWalletMessage(): void {
-        // Dispatch custom event to trigger wallet connection
-        const connectWalletEvent = new CustomEvent('connectWallet');
-        window.dispatchEvent(connectWalletEvent);
+    private async startGameWithStaking(): Promise<void> {
+        console.log('TitleScene: startGameWithStaking called');
+        if (this.isStartingGame) {
+            console.log('TitleScene: Already starting game, returning');
+            return;
+        }
+
+        this.isStartingGame = true;
+        console.log('TitleScene: Showing loading message...');
+        this.showLoadingMessage("Starting game session...");
+
+        try {
+            console.log('TitleScene: Checking if staking service is initialized...');
+            // Initialize staking service if not already done
+            if (!this.stakingService.isInitialized()) {
+                console.log('TitleScene: Staking service not initialized, initializing...');
+                const initialized = await this.stakingService.initialize();
+                console.log('TitleScene: Staking service initialization result:', initialized);
+                if (!initialized) {
+                    throw new Error('Failed to initialize staking service');
+                }
+            }
+
+            console.log('TitleScene: Getting stake info...');
+            // Get stake info
+            const stakeInfo = await this.stakingService.getStakeInfo();
+            if (!stakeInfo) {
+                throw new Error('Failed to get stake information');
+            }
+
+            console.log('Stake info:', {
+                requiredStake: stakeInfo.requiredStake.toString(),
+                winMultiplier: stakeInfo.winMultiplier.toString()
+            });
+
+            // Start game session
+            console.log('TitleScene: Starting game session...');
+            this.showLoadingMessage("Starting game session on blockchain...");
+            const session = await this.stakingService.startGameSession();
+
+            if (!session) {
+                throw new Error('Failed to start game session');
+            }
+
+            console.log('Game session started:', session);
+
+            // Store session info for the game to use
+            (window as any).currentGameSession = session;
+
+            // Start the game
+            console.log('TitleScene: Starting game...');
+            this.startGame();
+
+        } catch (error) {
+            console.error('TitleScene: Failed to start game with staking:', error);
+            this.hideLoadingMessage();
+            this.showErrorMessage(`Failed to start game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            this.isStartingGame = false;
+        }
+    }
+
+    private showLoadingMessage(message: string): void {
+        const { width, height } = this.scale;
+
+        // Remove existing loading text
+        if (this.loadingText) {
+            this.loadingText.destroy();
+        }
+
+        // Create loading text
+        this.loadingText = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.85,
+            "default",
+            message,
+            14
+        );
+        this.loadingText.setOrigin(0.5);
+        this.loadingText.setTint(0xffff00); // Yellow color
+        this.loadingText.setDepth(15);
+
+        // Disable start button
+        if (this.startButton) {
+            this.startButton.disableInteractive();
+        }
+        if (this.startButtonText) {
+            this.startButtonText.disableInteractive();
+        }
+    }
+
+    private hideLoadingMessage(): void {
+        if (this.loadingText) {
+            this.loadingText.destroy();
+            this.loadingText = undefined;
+        }
+
+        // Re-enable start button
+        if (this.startButton) {
+            this.startButton.setInteractive();
+        }
+        if (this.startButtonText) {
+            this.startButtonText.setInteractive();
+        }
+    }
+
+    private showErrorMessage(message: string): void {
+        const { width, height } = this.scale;
+
+        // Create error text
+        const errorText = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.85,
+            "default",
+            message,
+            12
+        );
+        errorText.setOrigin(0.5);
+        errorText.setTint(0xff0000); // Red color
+        errorText.setDepth(15);
+
+        // Remove error text after 5 seconds
+        this.time.delayedCall(5000, () => {
+            errorText.destroy();
+        });
     }
 
     private startGame(): void {

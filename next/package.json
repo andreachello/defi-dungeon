@@ -12,6 +12,7 @@
     "@reown/appkit": "^1.7.17",
     "@reown/appkit-adapter-wagmi": "^1.7.17",
     "@tanstack/react-query": "^5.84.1",
+    "axios": "^1.11.0",
     "dungeoneer": "github:mipearson/dungeoneer#mp-fix-ts-bindings",
     "ethers": "^6.15.0",
     "mrpas": "^2.0.0",
