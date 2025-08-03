@@ -60,6 +60,10 @@ contract GameStaking is Ownable, ReentrancyGuard {
         if (won) {
             // Calculate and send winnings
             uint256 payout = (requiredStake * winMultiplier) / 100;
+            // if payout is greater than the balance of the contract, set payout to the requiredStake
+            if (payout > stakingToken.balanceOf(address(this))) {
+                payout = requiredStake;
+            }
             stakingToken.safeTransfer(msg.sender, payout);
         }
         emit GameEnded(msg.sender, gameId, won);
