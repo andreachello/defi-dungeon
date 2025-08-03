@@ -94,7 +94,7 @@ export class OneInchAPI {
     slippage: number = 1,
     chainId: number = 1
   ): Promise<SwapQuote> {
-    return this.makeRequest(`/swap/v6.0/${chainId}/swap`, {
+    return this.makeRequest(`/swap/v6.1/${chainId}/swap`, {
       src: fromTokenAddress,
       dst: toTokenAddress,
       amount: amount,
