@@ -433,5 +433,61 @@ export default class DungeonScene extends Phaser.Scene {
 
     // Emit global game over event for other scenes
     this.game.events.emit('gameOver', data);
+
+    // Show game over message and restart after delay
+    this.showGameOverMessage(data.reason);
+  }
+
+  private showGameOverMessage(reason: string) {
+    const gameWidth = this.game.scale.width;
+    const gameHeight = this.game.scale.height;
+
+    let gameOverMessage = 'GAME OVER';
+    if (reason === 'player_died') {
+      gameOverMessage = 'GAME OVER\nYou Died!';
+    } else if (reason === 'time_up') {
+      gameOverMessage = 'GAME OVER\nTime\'s Up!';
+    }
+
+    // const gameOverText = this.add.text(
+    //   gameWidth / 2,
+    //   gameHeight / 2,
+    //   gameOverMessage,
+    //   {
+    //     fontSize: '32px',
+    //     color: '#ff0000',
+    //     backgroundColor: '#000000',
+    //     padding: { x: 20, y: 10 },
+    //     align: 'center'
+    //   }
+    // );
+    // gameOverText.setOrigin(0.5);
+    // gameOverText.setDepth(3000);
+
+    // Fade to black and restart after 3 seconds
+    this.time.delayedCall(3000, () => {
+      // Create fade overlay
+      const fadeOverlay = this.add.rectangle(
+        0, 0,
+        this.game.scale.width,
+        this.game.scale.height,
+        0x000000
+      );
+      fadeOverlay.setOrigin(0, 0);
+      fadeOverlay.setDepth(20);
+      fadeOverlay.setAlpha(0);
+
+      // Fade to black over 2 seconds
+      this.tweens.add({
+        targets: fadeOverlay,
+        alpha: 1,
+        duration: 2000,
+        onComplete: () => {
+          // Dispatch custom event to restart the game
+          const restartGameEvent = new CustomEvent('restartGame');
+          window.dispatchEvent(restartGameEvent);
+        }
+      });
+    });
   }
 }
