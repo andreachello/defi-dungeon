@@ -4,7 +4,7 @@ import axios from 'axios';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const amount = searchParams.get('amount');
-  const receiver = searchParams.get('receiver'); // Add receiver parameter
+  const receiver = searchParams.get('receiver');
 
   if (!amount || !receiver) {
     return NextResponse.json({ error: 'Amount and receiver are required' }, { status: 400 });
@@ -14,29 +14,67 @@ export async function GET(request: Request) {
   const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE";
   const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200";
 
+  // Log the parameters
+  console.log('Swap Parameters:', {
+    src: USDC_ADDRESS,
+    dst: ONEINCH_TOKEN_ADDRESS,
+    amount: amount,
+    from: STAKING_CONTRACT_ADDRESS,
+    receiver: receiver
+  });
+
   try {
+    // First try to get a quote to check liquidity
+    const quoteResponse = await axios.get('https://api.1inch.dev/swap/v6.1/8453/quote', {
+      headers: {
+        'Authorization': `Bearer ${process.env.apiKey}`
+      },
+      params: {
+        src: USDC_ADDRESS,
+        dst: ONEINCH_TOKEN_ADDRESS,
+        amount: amount
+      }
+    });
+
+    console.log('Quote Response:', quoteResponse.data);
+
+    // If quote succeeds, try the swap
     const swapResponse = await axios.get('https://api.1inch.dev/swap/v6.1/8453/swap', {
       headers: {
         'Authorization': `Bearer ${process.env.apiKey}`
       },
       params: {
-        fromTokenAddress: USDC_ADDRESS,
-        toTokenAddress: ONEINCH_TOKEN_ADDRESS,
-        fromAddress: STAKING_CONTRACT_ADDRESS,
+        src: USDC_ADDRESS,
+        dst: ONEINCH_TOKEN_ADDRESS,
         amount: amount,
+        from: STAKING_CONTRACT_ADDRESS,
+        receiver: receiver,
         slippage: 1,
-        disableEstimate: true, // Skip balance and allowance checks
+        disableEstimate: true,
         allowPartialFill: false,
-        compatibilityMode: true, // Add this to ensure compatibility
-        receiver: receiver, // Use the provided receiver address
+        referrer: STAKING_CONTRACT_ADDRESS,
+        origin: STAKING_CONTRACT_ADDRESS // Add this to match contract's srcReceiver
       }
     });
+
+    // Log the swap data for debugging
+    console.log('Swap Response:', swapResponse.data);
 
     return NextResponse.json(swapResponse.data);
   } catch (error: any) {
     console.error('Error details:', error.response?.data || error.message);
     return NextResponse.json(
-      { error: 'Failed to fetch swap data', details: error.response?.data || error.message }, 
+      { 
+        error: 'Failed to fetch swap data', 
+        details: error.response?.data || error.message,
+        params: {
+          src: USDC_ADDRESS,
+          dst: ONEINCH_TOKEN_ADDRESS,
+          amount: amount,
+          from: STAKING_CONTRACT_ADDRESS,
+          receiver: receiver
+        }
+      }, 
       { status: error.response?.status || 500 }
     );
   }
