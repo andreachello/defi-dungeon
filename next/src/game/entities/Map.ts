@@ -190,12 +190,12 @@ export default class Map {
         continue; // Skip regular slime spawning for boss rooms
       }
 
-      // Regular slime spawning logic (only for non-boss rooms)
-      if (!this.lockedRooms.has(roomIndex) && !this.goldLockedRooms.has(roomIndex)) {
+      // Spawn slimes in all rooms except the boss room
+      if (!this.bossLockedRooms.has(roomIndex)) {
         // Increase slime count based on room type
         let numSlimes: number;
         if (this.lockedRooms.has(roomIndex) || this.goldLockedRooms.has(roomIndex)) {
-          // Locked rooms have more enemies (3-6 slimes)
+          // Locked/gold rooms have more enemies (3-6 slimes)
           numSlimes = Phaser.Math.Between(3, 6);
         } else {
           // Normal rooms have fewer enemies (1-3 slimes)
@@ -245,63 +245,54 @@ export default class Map {
       }
     }
 
-    // TEMPORARILY: Spawn player in boss room instead of unlocked rooms
-    const bossRoomIndex = Array.from(this.bossLockedRooms)[0]; // Get the first boss room
-    if (bossRoomIndex !== undefined) {
-      const bossRoom = this.rooms[bossRoomIndex];
-      this.startingX = Math.floor(bossRoom.x + bossRoom.width / 2);
-      this.startingY = Math.floor(bossRoom.y + bossRoom.height / 2);
-      console.log(`TEMPORARY: Player spawning in boss room ${bossRoomIndex} at (${this.startingX}, ${this.startingY})`);
-    } else {
-      // Fallback to original logic if no boss room exists
-      const unlockedRooms = this.rooms.filter((_, index) =>
-        !this.lockedRooms.has(index) &&
-        !this.goldLockedRooms.has(index) &&
-        !this.bossLockedRooms.has(index)
-      );
+    // Choose starting room (must be unlocked) and ensure safe spawn
+    const unlockedRooms = this.rooms.filter((_, index) =>
+      !this.lockedRooms.has(index) &&
+      !this.goldLockedRooms.has(index) &&
+      !this.bossLockedRooms.has(index)
+    );
 
-      if (unlockedRooms.length === 0) {
-        console.error("No unlocked rooms available for spawn! This should not happen.");
-        // Fallback: use the first room regardless
-        const firstRoom = this.rooms[0];
+    if (unlockedRooms.length === 0) {
+      console.error("No unlocked rooms available for spawn! This should not happen.");
+      // Fallback: use the first room regardless
+      const firstRoom = this.rooms[0];
+      this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
+      this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
+    } else {
+      // Try to find a safe spawn position
+      let safePositionFound = false;
+      let attempts = 0;
+      const maxAttempts = 50;
+
+      while (!safePositionFound && attempts < maxAttempts) {
+        const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
+        const selectedRoom = unlockedRooms[roomNumber];
+
+        // Try multiple positions within the room
+        for (let posAttempt = 0; posAttempt < 10; posAttempt++) {
+          const spawnX = Math.floor(selectedRoom.x + 1 + Math.random() * (selectedRoom.width - 2));
+          const spawnY = Math.floor(selectedRoom.y + 1 + Math.random() * (selectedRoom.height - 2));
+
+          // Check if this position is safe (not on top of an enemy)
+          const isSafe = this.isPositionSafe(spawnX, spawnY);
+
+          if (isSafe) {
+            this.startingX = spawnX;
+            this.startingY = spawnY;
+            safePositionFound = true;
+            console.log(`Player spawning safely in unlocked room ${this.rooms.indexOf(selectedRoom)} at (${spawnX}, ${spawnY})`);
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      // If no safe position found, use the center of the first unlocked room
+      if (!safePositionFound) {
+        const firstRoom = unlockedRooms[0];
         this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
         this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
-      } else {
-        // Try to find a safe spawn position
-        let safePositionFound = false;
-        let attempts = 0;
-        const maxAttempts = 50;
-
-        while (!safePositionFound && attempts < maxAttempts) {
-          const roomNumber = Math.floor(Math.random() * unlockedRooms.length);
-          const selectedRoom = unlockedRooms[roomNumber];
-
-          // Try multiple positions within the room
-          for (let posAttempt = 0; posAttempt < 10; posAttempt++) {
-            const spawnX = Math.floor(selectedRoom.x + 1 + Math.random() * (selectedRoom.width - 2));
-            const spawnY = Math.floor(selectedRoom.y + 1 + Math.random() * (selectedRoom.height - 2));
-
-            // Check if this position is safe (not on top of an enemy)
-            const isSafe = this.isPositionSafe(spawnX, spawnY);
-
-            if (isSafe) {
-              this.startingX = spawnX;
-              this.startingY = spawnY;
-              safePositionFound = true;
-              console.log(`Player spawning safely in unlocked room ${this.rooms.indexOf(selectedRoom)} at (${spawnX}, ${spawnY})`);
-              break;
-            }
-          }
-          attempts++;
-        }
-
-        // If no safe position found, use the center of the first unlocked room
-        if (!safePositionFound) {
-          const firstRoom = unlockedRooms[0];
-          this.startingX = Math.floor(firstRoom.x + firstRoom.width / 2);
-          this.startingY = Math.floor(firstRoom.y + firstRoom.height / 2);
-          console.log(`No safe position found, using center of room ${this.rooms.indexOf(firstRoom)}`);
-        }
+        console.log(`No safe position found, using center of room ${this.rooms.indexOf(firstRoom)}`);
       }
     }
 
@@ -604,8 +595,8 @@ export default class Map {
           } else if (leadsToLockedRoom === 'gold') {
             this.tiles[y][x] = new Tile(TileType.GoldLockedDoor, x, y, this);
           } else if (leadsToLockedRoom === 'boss') {
-            // Replace boss doors with normal doors
-            this.tiles[y][x] = new Tile(TileType.Door, x, y, this);
+            // Create proper boss doors
+            this.tiles[y][x] = new Tile(TileType.BossDoor, x, y, this);
           }
         }
       }
