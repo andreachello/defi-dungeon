@@ -83,15 +83,6 @@ export default class TitleScene extends Phaser.Scene {
         // Add title animation
         this.animateTitle();
 
-        // Add keyboard input
-        this.input.keyboard?.on('keydown-SPACE', () => {
-            this.handleStartAction();
-        });
-
-        this.input.keyboard?.on('keydown-ENTER', () => {
-            this.handleStartAction();
-        });
-
         // Add click/touch input
         this.input.on('pointerdown', () => {
             this.handleStartAction();
@@ -174,19 +165,6 @@ export default class TitleScene extends Phaser.Scene {
     private createStartButton(): void {
         const { width, height } = this.scale;
 
-        // Create button background
-        this.startButton = this.add.rectangle(
-            width / 2,
-            height * 0.75,
-            200,
-            60,
-            0x333333,
-            0.8
-        );
-        this.startButton.setStrokeStyle(2, 0xff6b35);
-        this.startButton.setInteractive();
-        this.startButton.setDepth(5);
-
         // Create button text based on wallet connection
         const buttonText = this.walletConnected ? "START GAME" : "CONNECT WALLET";
         this.startButtonText = this.add.dynamicBitmapText(
@@ -197,34 +175,57 @@ export default class TitleScene extends Phaser.Scene {
             20
         );
         this.startButtonText.setOrigin(0.5);
-        this.startButtonText.setTint(0xffffff);
-        this.startButtonText.setDepth(5);
+        this.startButtonText.setTint(0xffffff); // Bright white
+        this.startButtonText.setAlpha(1.0); // 100% opacity
+        this.startButtonText.setDepth(10); // Higher depth to ensure it's on top
 
-        // Add hover effects
-        this.startButton.on('pointerover', () => {
-            this.startButton?.setStrokeStyle(3, 0xff8c42);
-            this.startButtonText?.setTint(0xff6b35);
-        });
+        // Only create rectangle background if wallet is connected
+        if (this.walletConnected) {
+            // Create button background
+            this.startButton = this.add.rectangle(
+                width / 2,
+                height * 0.75,
+                200,
+                60,
+                0x333333,
+                0.8
+            );
+            this.startButton.setStrokeStyle(2, 0xff6b35);
+            this.startButton.setInteractive();
+            this.startButton.setDepth(9); // Lower than text
 
-        this.startButton.on('pointerout', () => {
-            this.startButton?.setStrokeStyle(2, 0xff6b35);
-            this.startButtonText?.setTint(0xffffff);
-        });
+            // Add hover effects
+            this.startButton.on('pointerover', () => {
+                this.startButton?.setStrokeStyle(3, 0xff8c42);
+                this.startButtonText?.setTint(0xffffff); // Keep white on hover
+            });
 
-        this.startButton.on('pointerdown', () => {
-            this.handleStartAction();
-        });
+            this.startButton.on('pointerout', () => {
+                this.startButton?.setStrokeStyle(2, 0xff6b35);
+                this.startButtonText?.setTint(0xffffff); // Keep white
+            });
 
-        // Add pulsing animation to button
-        this.tweens.add({
-            targets: this.startButton,
-            scaleX: 1.05,
-            scaleY: 1.05,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+            this.startButton.on('pointerdown', () => {
+                this.handleStartAction();
+            });
+
+            // Add pulsing animation to button
+            this.tweens.add({
+                targets: this.startButton,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        } else {
+            // Make the text interactive when wallet is not connected
+            this.startButtonText.setInteractive();
+            this.startButtonText.on('pointerdown', () => {
+                this.handleStartAction();
+            });
+        }
     }
 
     private createInfoText(): void {
@@ -236,7 +237,7 @@ export default class TitleScene extends Phaser.Scene {
             height * 0.85,
             "default",
             this.walletConnected
-                ? "Press SPACE or ENTER to start"
+                ? "Click the button to start"
                 : "Connect your wallet to begin your adventure",
             12
         );
@@ -344,6 +345,66 @@ export default class TitleScene extends Phaser.Scene {
         if (this.startButtonText) {
             const buttonText = this.walletConnected ? "START GAME" : "CONNECT WALLET";
             this.startButtonText.setText(buttonText);
+
+            // Update the button state based on wallet connection
+            if (this.walletConnected) {
+                // Create rectangle background if it doesn't exist
+                if (!this.startButton) {
+                    const { width, height } = this.scale;
+                    this.startButton = this.add.rectangle(
+                        width / 2,
+                        height * 0.75,
+                        200,
+                        60,
+                        0x333333,
+                        0.8
+                    );
+                    this.startButton.setStrokeStyle(2, 0xff6b35);
+                    this.startButton.setInteractive();
+                    this.startButton.setDepth(9); // Lower than text
+
+                    // Add hover effects
+                    this.startButton.on('pointerover', () => {
+                        this.startButton?.setStrokeStyle(3, 0xff8c42);
+                        this.startButtonText?.setTint(0xffffff); // Keep white on hover
+                    });
+
+                    this.startButton.on('pointerout', () => {
+                        this.startButton?.setStrokeStyle(2, 0xff6b35);
+                        this.startButtonText?.setTint(0xffffff); // Keep white
+                    });
+
+                    this.startButton.on('pointerdown', () => {
+                        this.handleStartAction();
+                    });
+
+                    // Add pulsing animation to button
+                    this.tweens.add({
+                        targets: this.startButton,
+                        scaleX: 1.05,
+                        scaleY: 1.05,
+                        duration: 1000,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+
+                // Remove text interactivity since we have the rectangle now
+                this.startButtonText.disableInteractive();
+            } else {
+                // Remove rectangle background if it exists
+                if (this.startButton) {
+                    this.startButton.destroy();
+                    this.startButton = undefined;
+                }
+
+                // Make text interactive
+                this.startButtonText.setInteractive();
+                this.startButtonText.on('pointerdown', () => {
+                    this.handleStartAction();
+                });
+            }
         }
     }
 } 
