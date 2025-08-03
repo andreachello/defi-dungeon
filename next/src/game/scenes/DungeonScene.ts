@@ -7,6 +7,7 @@ import Map from "../entities/Map";
 import PickupItem from "../entities/PickupItem";
 import { TileType } from "../entities/Tile";
 import Chest from "../entities/Chest";
+import Boss from "../entities/Boss";
 
 const worldTileHeight = 81;
 const worldTileWidth = 81;
@@ -22,6 +23,7 @@ export default class DungeonScene extends Phaser.Scene {
   fov: FOVLayer | null;
   tilemap: Phaser.Tilemaps.Tilemap | null;
   roomDebugGraphics?: Phaser.GameObjects.Graphics;
+  boss: Boss | null = null;
 
   // Inventory overlay properties
   private inventoryBackground?: Phaser.GameObjects.Rectangle;
@@ -49,6 +51,7 @@ export default class DungeonScene extends Phaser.Scene {
       frameHeight: Graphics.items.height,
       frameWidth: Graphics.items.width
     });
+    this.load.atlas('boss', '/assets/boss/boss.png', '/assets/boss/boss.json');
   }
 
   constructor() {
@@ -119,6 +122,18 @@ export default class DungeonScene extends Phaser.Scene {
       }
     });
 
+    Object.values(Graphics.boss.animations).forEach(anim => {
+      if (!this.anims.get(anim.key)) {
+        this.anims.create({
+          ...anim,
+          frames: this.anims.generateFrameNumbers(
+            Graphics.boss.name,
+            anim.frames
+          )
+        });
+      }
+    });
+
     const map = new Map(worldTileWidth, worldTileHeight, this);
     this.tilemap = map.tilemap;
 
@@ -143,6 +158,16 @@ export default class DungeonScene extends Phaser.Scene {
     // Add chest handling
     this.chests = map.chests;
     this.chestGroup = this.physics.add.group(this.chests.map(chest => chest.sprite) as unknown as Phaser.GameObjects.Sprite[]);
+
+    // Add boss to the scene
+    this.boss = map.boss;
+    if (this.boss) {
+      this.physics.add.collider(this.player!.sprite, this.boss.sprite, () => {
+        // Player takes damage if touching boss
+        this.player!.takeDamage(1);
+        this.player!.stagger();
+      });
+    }
 
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setZoom(3);
@@ -296,6 +321,10 @@ export default class DungeonScene extends Phaser.Scene {
 
     for (let slime of this.slimes) {
       slime.update(time);
+    }
+
+    if (this.boss) {
+      this.boss.update(time);
     }
 
     const player = new Phaser.Math.Vector2({

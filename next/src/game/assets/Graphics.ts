@@ -4,6 +4,7 @@ const RogueSlime = "/assets/fongoose/RogueSlime32x32.png";
 const RogueItems = "/assets/fongoose/RogueItems16x16.png";
 
 const Util = "/assets/Util.png";
+const BossSprite = "/assets/boss/boss.png";
 
 type AnimConfig = {
   key: string;
@@ -177,6 +178,43 @@ const slime: AnimSet = {
   }
 };
 
+const boss: AnimSet = {
+  name: "boss",
+  width: 32,
+  height: 32,
+  file: BossSprite,
+  animations: {
+    idle: {
+      key: "bossIdle",
+      frames: { start: 0, end: 0 },
+      frameRate: 6,
+      repeat: -1
+    },
+    move: {
+      key: "bossMove",
+      frames: { start: 1, end: 3 },
+      frameRate: 8,
+      repeat: -1
+    },
+    attack: {
+      key: "bossAttack",
+      frames: { start: 4, end: 7 },
+      frameRate: 12
+    },
+    hit: {
+      key: "bossHit",
+      frames: { start: 8, end: 9 },
+      frameRate: 8
+    },
+    death: {
+      key: "bossDeath",
+      frames: { start: 10, end: 13 },
+      frameRate: 8,
+      hideOnComplete: true
+    }
+  }
+};
+
 const items = {
   name: "items",
   width: 16,
@@ -198,6 +236,7 @@ export default {
   environment,
   player,
   slime,
+  boss,
   items,
   util
 };
