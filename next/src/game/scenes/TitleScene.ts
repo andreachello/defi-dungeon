@@ -392,13 +392,8 @@ export default class TitleScene extends Phaser.Scene {
             alpha: 1,
             duration: 500,
             onComplete: () => {
-                // Start the dungeon scene
+                // Start the dungeon scene first, which will handle launching other scenes
                 this.scene.start("DungeonScene");
-                this.scene.start("InfoScene");
-                this.scene.start("InventoryScene");
-                this.scene.start("MinimapScene");
-                this.scene.start("TimerScene");
-                this.scene.start("HealthScene");
             }
         });
     }

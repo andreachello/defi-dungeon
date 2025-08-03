@@ -11,7 +11,6 @@ import TimerScene from "../game/scenes/TimerScene";
 import HealthScene from "../game/scenes/HealthScene";
 import WalletConnectButton from "./WalletConnectButton";
 import { useAuth } from "@/hooks/useAuth";
-import ShopScene from "../game/scenes/ShopScene";
 
 export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -73,7 +72,6 @@ export default function Game() {
         },
         scene: [
           TitleScene,
-          ShopScene,
           DungeonScene,
           InfoScene,
           InventoryScene,
