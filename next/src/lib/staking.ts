@@ -365,7 +365,7 @@ const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200";
 
 // Base Mainnet Addresses
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
-const ONEINCH_ROUTER = "0x1111111254EEB25477B68fb85Ed929f73A960582"; // 1inch Router v5 on Base
+const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1INCH on Base
 
 async function get1InchSwapData(amount: string) {
     // 1inch API endpoint (Base = chain ID 8453)
@@ -373,8 +373,7 @@ async function get1InchSwapData(amount: string) {
     
     const params = {
         fromTokenAddress: USDC_ADDRESS,
-        toTokenAddress: ONEINCH_ROUTER, // You might want to change this to a different token on Base
-        amount,
+        toTokenAddress: ONEINCH_TOKEN_ADDRESS,
         fromAddress: STAKING_CONTRACT_ADDRESS,
         slippage: 1, // 1% slippage
         disableEstimate: false,
