@@ -62,8 +62,13 @@ export default class Player {
   private visionMultiplier: number = 1;
   private visionBoostUntil: number = 0;
 
+  // Add initialization delay
+  private gameStartTime: number = 0;
+  private readonly INITIALIZATION_DELAY = 1000; // 1 second delay
+
   constructor(x: number, y: number, scene: Phaser.Scene) {
     this.scene = scene;
+    this.gameStartTime = scene.time.now; // Record when the game started
     this.sprite = scene.physics.add.sprite(x, y, Graphics.player.name, 0);
     this.sprite.setSize(8, 8);
     this.sprite.setOffset(20, 28);
@@ -404,6 +409,13 @@ export default class Player {
       return;
     }
 
+    // Check if game is still initializing
+    if (time - this.gameStartTime < this.INITIALIZATION_DELAY) {
+      // During initialization, only allow basic movement without speed modifiers
+      this.handleBasicMovement();
+      return;
+    }
+
     // Check number key presses for inventory
     this.checkNumberKeyPresses();
 
@@ -523,6 +535,50 @@ export default class Player {
     }
     if (this.flashEmitter.on) {
       this.flashEmitter.stop();
+    }
+  }
+
+  private handleBasicMovement() {
+    const keys = this.keys;
+
+    this.body.setVelocity(0);
+
+    const left = keys.left.isDown || keys.a.isDown;
+    const right = keys.right.isDown || keys.d.isDown;
+    const up = keys.up.isDown || keys.w.isDown;
+    const down = keys.down.isDown || keys.s.isDown;
+
+    // Use base speed without multipliers during initialization
+    const currentSpeed = speed;
+
+    if (!this.body.blocked.left && left) {
+      this.body.setVelocityX(-currentSpeed);
+      this.sprite.setFlipX(true);
+    } else if (!this.body.blocked.right && right) {
+      this.body.setVelocityX(currentSpeed);
+      this.sprite.setFlipX(false);
+    }
+
+    if (!this.body.blocked.up && up) {
+      this.body.setVelocityY(-currentSpeed);
+    } else if (!this.body.blocked.down && down) {
+      this.body.setVelocityY(currentSpeed);
+    }
+
+    // Set animation based on movement
+    if (left || right) {
+      this.sprite.anims.play(Graphics.player.animations.walk.key);
+      this.facingUp = false;
+    } else if (down) {
+      this.sprite.anims.play(Graphics.player.animations.walk.key);
+      this.facingUp = false;
+    } else if (up) {
+      this.sprite.anims.play(Graphics.player.animations.walkBack.key);
+      this.facingUp = true;
+    } else if (this.facingUp) {
+      this.sprite.anims.play(Graphics.player.animations.idleBack.key);
+    } else {
+      this.sprite.anims.play(Graphics.player.animations.idle.key);
     }
   }
 

@@ -65,11 +65,16 @@ export default function Game() {
             width: window.innerWidth,
             height: window.innerHeight,
             render: { pixelArt: true },
+            fps: {
+              target: 60,
+              forceSetTimeOut: true
+            },
             physics: {
               default: "arcade",
               arcade: {
                 debug: false,
                 gravity: { y: 0 },
+                fps: 60
               },
             },
             scene: [
@@ -122,11 +127,16 @@ export default function Game() {
         width: window.innerWidth,
         height: window.innerHeight,
         render: { pixelArt: true },
+        fps: {
+          target: 60,
+          forceSetTimeOut: true
+        },
         physics: {
           default: "arcade",
           arcade: {
             debug: false,
             gravity: { y: 0 },
+            fps: 60
           },
         },
         scene: [
