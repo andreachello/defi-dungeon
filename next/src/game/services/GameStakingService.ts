@@ -174,12 +174,12 @@ export default class GameStakingService {
             console.log(`Ending game session. Won: ${won}, Game ID: ${this.currentSession.gameId}`);
 
             if (won) {
-                // If player won, get swap data for USDC to 1INCH
-                const swapData = await this.getSwapData();
-                if (!swapData) {
-                    console.error('Failed to get swap data');
-                    return false;
-                }
+                // // If player won, get swap data for USDC to 1INCH
+                // const swapData = await this.getSwapData();
+                // if (!swapData) {
+                //     console.error('Failed to get swap data');
+                //     return false;
+                // }
 
                 // End the game on the contract with swap data
                 const result = await handleGameEnd(this.contract, this.currentSession.gameId, true);

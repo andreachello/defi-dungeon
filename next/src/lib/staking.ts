@@ -369,7 +369,7 @@ const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1
 
 async function get1InchSwapData(amount: string) {
     // 1inch API endpoint (Base = chain ID 8453)
-    const url = 'https://api.1inch.io/v5.0/8453/swap';
+    const url = 'https://api.1inch.dev/swap/v6.1/8453/swap';
     
     const params = {
         fromTokenAddress: USDC_ADDRESS,
@@ -467,7 +467,7 @@ export async function handleGameEnd(
             const winMultiplier = await contract.winMultiplier();
             
             // Calculate payout
-            const payout = (requiredStake * winMultiplier) / BigInt(100);
+            const payout = BigInt(requiredStake * winMultiplier) / BigInt(100);
             
             // Get swap data from 1inch
             const swapData = await get1InchSwapData(payout.toString());
