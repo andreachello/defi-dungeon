@@ -56,8 +56,8 @@ export default function Game() {
   }, [isLoggedIn]);
 
   return (
-    <div className="bg-black">
-      <div className="flex justify-end pr-4 pt-4">
+    <div className="bg-black relative">
+      <div className="absolute top-2 right-2 pr-4 pt-2">
         <WalletConnectButton />
       </div>
 
