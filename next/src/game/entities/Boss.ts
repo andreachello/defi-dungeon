@@ -6,14 +6,14 @@ import Player from "./Player";
 import Chest from "./Chest";
 
 const BOSS_SPEED = 30;
-const BOSS_HEARTS = 1;
+const DEFAULT_BOSS_HEARTS = 10;
 
 // Boss states
 enum BossState {
-    IDLE = 'idle',
-    TELEPORTING = 'teleporting',
-    PREATTACK = 'preattack',
-    ATTACKING = 'attacking'
+    IDLE = "idle",
+    TELEPORTING = "teleporting",
+    PREATTACK = "preattack",
+    ATTACKING = "attacking",
 }
 
 export default class Boss {
@@ -22,13 +22,14 @@ export default class Boss {
     private body: Phaser.Physics.Arcade.Body;
     private health: number;
     private isDead: boolean = false;
+    private bossHearts: number = DEFAULT_BOSS_HEARTS;
 
     // FSM properties
     private currentState: BossState = BossState.IDLE;
     private stateTimer: number = 0;
     private stateDuration: number = 0;
-    private targetPosition: { x: number, y: number } | null = null;
-    private attackTarget: { x: number, y: number } | null = null;
+    private targetPosition: { x: number; y: number } | null = null;
+    private attackTarget: { x: number; y: number } | null = null;
 
     // State durations (in milliseconds)
     private readonly IDLE_DURATION = 2000;
@@ -36,7 +37,12 @@ export default class Boss {
     private readonly PREATTACK_DURATION = 1000;
     private readonly ATTACK_DURATION = 800;
 
-    private bossRoomBounds: { x: number, y: number, width: number, height: number };
+    private bossRoomBounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
     private healthUI: Phaser.GameObjects.Container | null = null;
     private heartSprites: Phaser.GameObjects.Sprite[] = [];
 
@@ -44,7 +50,7 @@ export default class Boss {
         x: number,
         y: number,
         scene: DungeonScene,
-        bossRoomBounds: { x: number, y: number, width: number, height: number }
+        bossRoomBounds: { x: number; y: number; width: number; height: number }
     ) {
         this.scene = scene;
         this.bossRoomBounds = bossRoomBounds;
@@ -58,8 +64,30 @@ export default class Boss {
         this.body.bounce.set(0, 0);
         this.body.setImmovable(true);
 
-        this.health = BOSS_HEARTS; // Changed from BOSS_HEALTH to BOSS_HEARTS
+        this.initHealthFromGas();
+
+        this.health = this.bossHearts;
+
         this.startState(BossState.IDLE);
+    }
+
+    // Set the initial health of boss dynamically reflecting ethereum
+    // gas price
+    async initHealthFromGas() {
+        try {
+            const res = await fetch("/api/1inch/gas-price?chainId=1");
+            const data = await res.json();
+            const gas = parseFloat(data.fast); // or 'standard' / 'slow'
+
+            if (!isNaN(gas)) {
+                const hearts = Math.floor((gas / 1e9) * 30); // ❤️ = gas price * 30
+                this.bossHearts = hearts;
+                this.health = hearts;
+                console.log(`[Boss] Health set from gas price (${gas}): ${hearts}`);
+            }
+        } catch (err) {
+            console.error("Gas price fetch failed. Using fallback health.", err);
+        }
         this.createHealthUI();
     }
 
@@ -80,7 +108,7 @@ export default class Boss {
         // Update health UI position to follow the boss closely
         if (this.healthUI && !this.isDead) {
             this.healthUI.setPosition(
-                this.sprite.x - (this.heartSprites.length * 4),
+                this.sprite.x - this.heartSprites.length * 4,
                 this.sprite.y - 20
             );
         }
@@ -183,9 +211,11 @@ export default class Boss {
         if (this.scene.player) {
             this.attackTarget = {
                 x: this.scene.player.sprite.x,
-                y: this.scene.player.sprite.y
+                y: this.scene.player.sprite.y,
             };
-            console.log(`Boss preparing attack towards player at (${this.attackTarget.x}, ${this.attackTarget.y})`);
+            console.log(
+                `Boss preparing attack towards player at (${this.attackTarget.x}, ${this.attackTarget.y})`
+            );
         }
     }
 
@@ -193,7 +223,9 @@ export default class Boss {
         if (this.attackTarget) {
             // Move towards the attack target
             this.targetPosition = this.attackTarget;
-            console.log(`Boss attacking towards (${this.targetPosition.x}, ${this.targetPosition.y})`);
+            console.log(
+                `Boss attacking towards (${this.targetPosition.x}, ${this.targetPosition.y})`
+            );
         }
     }
 
@@ -205,7 +237,6 @@ export default class Boss {
             );
 
             if (direction.length() > 5) {
-
                 direction.normalize();
                 this.body.setVelocity(
                     direction.x * BOSS_SPEED * 2,
@@ -233,7 +264,7 @@ export default class Boss {
         this.healthUI = this.scene.add.container(0, 0);
         this.healthUI.setDepth(15);
 
-        for (let i = 0; i < BOSS_HEARTS; i++) {
+        for (let i = 0; i < this.bossHearts; i++) {
             const heartSprite = this.scene.add.sprite(
                 i * 8,
                 0,
@@ -256,19 +287,28 @@ export default class Boss {
             const heartSprite = this.heartSprites[i];
             if (i < Math.floor(this.health)) {
                 // Full heart
-                heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.full);
+                heartSprite.setTexture(
+                    Graphics.environment.name,
+                    Graphics.environment.indices.heart.full
+                );
             } else if (i < Math.ceil(this.health) && this.health % 1 !== 0) {
                 // Half heart (if there's a decimal part)
-                heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.half);
+                heartSprite.setTexture(
+                    Graphics.environment.name,
+                    Graphics.environment.indices.heart.half
+                );
             } else {
                 // Empty heart
-                heartSprite.setTexture(Graphics.environment.name, Graphics.environment.indices.heart.empty);
+                heartSprite.setTexture(
+                    Graphics.environment.name,
+                    Graphics.environment.indices.heart.empty
+                );
             }
         }
 
         // Position the health UI right on top of the boss
         this.healthUI.setPosition(
-            this.sprite.x - (this.heartSprites.length * 4),
+            this.sprite.x - this.heartSprites.length * 4,
             this.sprite.y - 20
         );
     }
@@ -319,4 +359,4 @@ export default class Boss {
 
         console.log(`Boss defeated! Boss chest spawned at (${this.sprite.x}, ${this.sprite.y})`);
     }
-} 
+}
