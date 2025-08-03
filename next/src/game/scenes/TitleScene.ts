@@ -11,6 +11,8 @@ export default class TitleScene extends Phaser.Scene {
     private particles?: Phaser.GameObjects.Particles.ParticleEmitterManager;
     private startButton?: Phaser.GameObjects.Rectangle;
     private startButtonText?: Phaser.GameObjects.DynamicBitmapText;
+    private shopButton?: Phaser.GameObjects.Rectangle;
+    private shopButtonText?: Phaser.GameObjects.DynamicBitmapText;
     private isTransitioning: boolean = false;
     private walletConnected: boolean = false;
 
@@ -237,6 +239,64 @@ export default class TitleScene extends Phaser.Scene {
                 this.handleStartAction();
             });
         }
+
+        // Create shop button (always visible)
+        this.createShopButton();
+    }
+
+    private createShopButton(): void {
+        const { width, height } = this.scale;
+
+        // Create shop button text
+        this.shopButtonText = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.85,
+            "default",
+            "SHOP",
+            16
+        );
+        this.shopButtonText.setOrigin(0.5);
+        this.shopButtonText.setTint(0xffffff);
+        this.shopButtonText.setDepth(10);
+
+        // Create shop button background
+        this.shopButton = this.add.rectangle(
+            width / 2,
+            height * 0.85,
+            120,
+            40,
+            0x333333,
+            0.8
+        );
+        this.shopButton.setStrokeStyle(2, 0x4CAF50); // Green color for shop
+        this.shopButton.setInteractive();
+        this.shopButton.setDepth(9);
+
+        // Add hover effects
+        this.shopButton.on('pointerover', () => {
+            this.shopButton?.setStrokeStyle(3, 0x66BB6A);
+            this.shopButtonText?.setTint(0xffffff);
+        });
+
+        this.shopButton.on('pointerout', () => {
+            this.shopButton?.setStrokeStyle(2, 0x4CAF50);
+            this.shopButtonText?.setTint(0xffffff);
+        });
+
+        this.shopButton.on('pointerdown', () => {
+            this.scene.start("ShopScene");
+        });
+
+        // Add subtle pulsing animation
+        this.tweens.add({
+            targets: this.shopButton,
+            scaleX: 1.02,
+            scaleY: 1.02,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
     }
 
     private createInfoText(): void {
@@ -245,7 +305,7 @@ export default class TitleScene extends Phaser.Scene {
         // Instructions based on wallet connection
         const instructions = this.add.dynamicBitmapText(
             width / 2,
-            height * 0.85,
+            height * 0.92,
             "default",
             this.walletConnected
                 ? "Click the button to start"
@@ -259,7 +319,7 @@ export default class TitleScene extends Phaser.Scene {
         // Version or additional info
         const version = this.add.dynamicBitmapText(
             width / 2,
-            height * 0.92,
+            height * 0.97,
             "default",
             "v1.0 - DeFi Dungeon Crawler",
             10
