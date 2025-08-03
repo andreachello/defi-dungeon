@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { ethers } from 'ethers';
 
 // ABI for the staking contract
@@ -7,6 +8,16 @@ const STAKING_ABI = [
       {
         "internalType": "address",
         "name": "_stakingToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_rewardToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_oneInchRouter",
         "type": "address"
       },
       {
@@ -81,6 +92,12 @@ const STAKING_ABI = [
         "internalType": "bool",
         "name": "won",
         "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "rewardAmount",
+        "type": "uint256"
       }
     ],
     "name": "GameEnded",
@@ -161,6 +178,11 @@ const STAKING_ABI = [
         "internalType": "bool",
         "name": "won",
         "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "swapData",
+        "type": "bytes"
       }
     ],
     "name": "endGame",
@@ -221,6 +243,19 @@ const STAKING_ABI = [
   },
   {
     "inputs": [],
+    "name": "oneInchRouter",
+    "outputs": [
+      {
+        "internalType": "contract IAggregationRouterV5",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "owner",
     "outputs": [
       {
@@ -247,6 +282,26 @@ const STAKING_ABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "revokeApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "rewardToken",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -310,6 +365,28 @@ const STAKING_ABI = [
 export const STAKING_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_STAKING_CONTRACT_ADDRESS as `0x${string}`;
 export const STAKING_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_STAKING_TOKEN_ADDRESS as `0x${string}`;
 
+// Base Mainnet Addresses
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
+const ONEINCH_ROUTER = "0x1111111254EEB25477B68fb85Ed929f73A960582"; // 1inch Router v5 on Base
+
+async function get1InchSwapData(amount: string) {
+    // 1inch API endpoint (Base = chain ID 8453)
+    const url = 'https://api.1inch.io/v5.0/8453/swap';
+    
+    const params = {
+        fromTokenAddress: USDC_ADDRESS,
+        toTokenAddress: ONEINCH_ROUTER, // You might want to change this to a different token on Base
+        amount,
+        fromAddress: STAKING_CONTRACT_ADDRESS,
+        slippage: 1, // 1% slippage
+        disableEstimate: false,
+        allowPartialFill: false,
+    };
+
+    const response = await axios.get(url, { params });
+    return response.data.tx.data;
+}
+
 // Interface for game session
 export interface GameSession {
   gameId: string;
@@ -367,15 +444,47 @@ export async function startGame(contract: ethers.Contract): Promise<{ gameId: st
   };
 }
 
+// Update the endGame function to handle the swapData parameter
 export async function endGame(
-  contract: ethers.Contract,
-  gameId: string,
-  won: boolean
+    contract: ethers.Contract,
+    gameId: string,
+    won: boolean,
+    swapData: string = '0x' // Add default empty bytes for losses
 ): Promise<{ wait: () => Promise<any> }> {
-  const tx = await contract.endGame(gameId, won);
-  return {
-    wait: () => tx.wait()
-  };
+    const tx = await contract.endGame(gameId, won, swapData);
+    return {
+        wait: () => tx.wait()
+    };
+}
+
+// Add a helper function to handle the complete end game flow
+export async function handleGameEnd(
+    contract: ethers.Contract,
+    gameId: string,
+    won: boolean
+): Promise<{ wait: () => Promise<any> }> {
+    if (won) {
+        try {
+            // Get required stake and multiplier
+            const requiredStake = await contract.requiredStake();
+            const winMultiplier = await contract.winMultiplier();
+            
+            // Calculate payout
+            const payout = (requiredStake * winMultiplier) / BigInt(100);
+            
+            // Get swap data from 1inch
+            const swapData = await get1InchSwapData(payout.toString());
+            
+            // End game with swap
+            return await endGame(contract, gameId, true, swapData);
+        } catch (error) {
+            console.error('Error handling game end with swap:', error);
+            throw error;
+        }
+    } else {
+        // For losses, just end the game without swap data
+        return await endGame(contract, gameId, false);
+    }
 }
 
 // Admin functions
@@ -408,13 +517,14 @@ export function subscribeToGameStarted(
   });
 }
 
+// Update the event listener to include reward amount
 export function subscribeToGameEnded(
-  contract: ethers.Contract,
-  callback: (player: string, gameId: string, won: boolean) => void
+    contract: ethers.Contract,
+    callback: (player: string, gameId: string, won: boolean, rewardAmount: bigint) => void
 ): Promise<ethers.Contract> {
-  return contract.on('GameEnded', (player, gameId, won) => {
-    callback(player, gameId, won);
-  });
+    return contract.on('GameEnded', (player, gameId, won, rewardAmount) => {
+        callback(player, gameId, won, rewardAmount);
+    });
 }
 
 export function removeAllListeners(contract: ethers.Contract): void {
@@ -425,3 +535,54 @@ export function removeAllListeners(contract: ethers.Contract): void {
 export function getStakingContract(provider: ethers.Provider | ethers.Signer): ethers.Contract {
   return createContract(provider);
 }
+
+// Add a function to check USDC allowance
+export async function checkUSDCAllowance(
+    usdcContract: ethers.Contract,
+    owner: string,
+    spender: string
+): Promise<bigint> {
+    return await usdcContract.allowance(owner, spender);
+}
+
+// Add a function to approve USDC spending
+export async function approveUSDC(
+    usdcContract: ethers.Contract,
+    spender: string,
+    amount: bigint
+): Promise<{ wait: () => Promise<any> }> {
+    const tx = await usdcContract.approve(spender, amount);
+    return {
+        wait: () => tx.wait()
+    };
+}
+
+// Helper function to create USDC contract instance
+export function getUSDCContract(provider: ethers.Provider | ethers.Signer): ethers.Contract {
+    const abi = [
+        "function approve(address spender, uint256 amount) returns (bool)",
+        "function allowance(address owner, address spender) view returns (uint256)",
+        "function balanceOf(address account) view returns (uint256)"
+    ];
+    return new ethers.Contract(USDC_ADDRESS, abi, provider);
+}
+
+// Example usage in your game component:
+/*
+async function onGameEnd(won: boolean) {
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = getStakingContract(signer);
+        
+        // Handle game end with swap if won
+        const tx = await handleGameEnd(contract, currentGameId, won);
+        await tx.wait();
+        
+        // Handle success
+    } catch (error) {
+        console.error('Error ending game:', error);
+        // Handle error
+    }
+}
+*/
