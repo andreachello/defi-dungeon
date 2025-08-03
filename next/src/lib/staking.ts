@@ -361,9 +361,7 @@ const STAKING_ABI = [
   }
 ];
 
-// You'll need to set these values based on your deployment
-export const STAKING_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_STAKING_CONTRACT_ADDRESS as `0x${string}`;
-export const STAKING_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_STAKING_TOKEN_ADDRESS as `0x${string}`;
+const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200";
 
 // Base Mainnet Addresses
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
