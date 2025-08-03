@@ -173,9 +173,22 @@ export default class GameStakingService {
 
             console.log(`Ending game session. Won: ${won}, Game ID: ${this.currentSession.gameId}`);
 
-            // End the game on the contract
-            const result = await handleGameEnd(this.contract, this.currentSession.gameId, won);
-            await result.wait();
+            if (won) {
+                // If player won, get swap data for USDC to 1INCH
+                const swapData = await this.getSwapData();
+                if (!swapData) {
+                    console.error('Failed to get swap data');
+                    return false;
+                }
+
+                // End the game on the contract with swap data
+                const result = await handleGameEnd(this.contract, this.currentSession.gameId, true);
+                await result.wait();
+            } else {
+                // For losses, just end the game without swap data
+                const result = await handleGameEnd(this.contract, this.currentSession.gameId, false);
+                await result.wait();
+            }
 
             console.log('Game ended successfully on contract');
 
@@ -191,6 +204,70 @@ export default class GameStakingService {
         } catch (error) {
             console.error('Failed to end game session:', error);
             return false;
+        }
+    }
+
+    private async getSwapData(): Promise<string | null> {
+        try {
+            if (!this.currentSession?.stakeAmount) {
+                console.error('No stake amount available');
+                return null;
+            }
+
+            // Base chain addresses
+            const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
+            const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1INCH on Base
+            const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200"; // Your staking contract
+
+            // Calculate payout amount (stake * multiplier / 100)
+            const winMultiplier = await getWinMultiplier(this.contract!);
+            const payout = (this.currentSession.stakeAmount * winMultiplier) / BigInt(100);
+
+            console.log('Swap parameters:', {
+                stakeAmount: this.currentSession.stakeAmount.toString(),
+                winMultiplier: winMultiplier.toString(),
+                payout: payout.toString(),
+                fromToken: USDC_ADDRESS,
+                toToken: ONEINCH_TOKEN_ADDRESS,
+                fromAddress: STAKING_CONTRACT_ADDRESS
+            });
+
+            // Get swap data from 1inch API
+            const params = new URLSearchParams({
+                fromToken: USDC_ADDRESS,
+                toToken: ONEINCH_TOKEN_ADDRESS,
+                amount: payout.toString(),
+                fromAddress: STAKING_CONTRACT_ADDRESS,
+                slippage: "1", // 1% slippage
+                chainId: "8453" // Base chain ID
+            });
+
+            console.log('Calling 1inch API with URL:', `/api/1inch/swap?${params}`);
+
+            const response = await fetch(`/api/1inch/swap?${params}`);
+
+            console.log('1inch API response status:', response.status);
+            console.log('1inch API response status text:', response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('1inch API error response:', errorText);
+                throw new Error(`Failed to get swap data: ${response.statusText} - ${errorText}`);
+            }
+
+            const swapData = await response.json();
+            console.log('1inch API response data:', swapData);
+
+            if (!swapData.tx || !swapData.tx.data) {
+                console.error('Invalid swap data structure:', swapData);
+                return null;
+            }
+
+            return swapData.tx.data; // Return the transaction data
+
+        } catch (error) {
+            console.error('Failed to get swap data:', error);
+            return null;
         }
     }
 

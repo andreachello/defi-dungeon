@@ -3,6 +3,7 @@ import Graphics from "../assets/Graphics";
 import Item from "./Item";
 import Player from "./Player";
 import DungeonScene from "../scenes/DungeonScene";
+import GameStakingService from "../services/GameStakingService";
 
 export default class Chest {
     private isOpen: boolean = false;
@@ -12,6 +13,7 @@ export default class Chest {
     private scene: Phaser.Scene;
     private nextAction: number;
     private isBossChest: boolean = false;
+    private stakingService: GameStakingService;
 
     // Getters for position
     get x(): number { return this.sprite.x; }
@@ -20,6 +22,7 @@ export default class Chest {
     constructor(x: number, y: number, scene: Phaser.Scene, isBossChest: boolean = false) {
         this.scene = scene;
         this.isBossChest = isBossChest;
+        this.stakingService = GameStakingService.getInstance();
         this.sprite = scene.physics.add.sprite(x, y, Graphics.environment.name, Graphics.environment.indices.chest.closed);
 
         // Make the collision body cover the entire chest sprite
@@ -98,7 +101,7 @@ export default class Chest {
         }
     }
 
-    openChest() {
+    async openChest() {
         if (this.isOpen) {
             return; // Already opened
         }
@@ -127,9 +130,9 @@ export default class Chest {
                 }
             }
 
-            // Show congratulations message for boss chest
+            // If this is a boss chest, end the game session and handle the swap
             if (this.isBossChest) {
-                this.showCongratulationsMessage();
+                await this.handleBossChestWin();
             }
 
             // Update inventory display
@@ -142,6 +145,29 @@ export default class Chest {
         }
 
         console.log(`=== CHEST OPENED ===`);
+    }
+
+    private async handleBossChestWin() {
+        try {
+            console.log('🎉 Boss defeated! Ending game session and processing rewards...');
+
+            // Show congratulations message
+            this.showCongratulationsMessage();
+
+            // End the game session (this will handle the USDC to 1INCH swap)
+            const success = await this.stakingService.endGameSession(true);
+
+            if (success) {
+                console.log('✅ Game session ended successfully, rewards processed!');
+                this.showRewardProcessedMessage();
+            } else {
+                console.error('❌ Failed to end game session');
+                this.showErrorMessage('Failed to process rewards');
+            }
+        } catch (error) {
+            console.error('Error handling boss chest win:', error);
+            this.showErrorMessage('Error processing rewards');
+        }
     }
 
     private setFrame(frame: number) {
@@ -224,7 +250,63 @@ export default class Chest {
             duration: 3000,
             onComplete: () => {
                 text.destroy();
+            }
+        });
+    }
+
+    private showRewardProcessedMessage() {
+        const text = this.scene.add.text(
+            this.x,
+            this.y - 90, // Position above congratulations message
+            '💰 Rewards processed!\nUSDC swapped to 1INCH',
+            {
+                fontSize: '14px',
+                color: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 },
+                align: 'center'
+            }
+        );
+        text.setOrigin(0.5);
+        text.setDepth(15);
+
+        // Fade out after 4 seconds
+        this.scene.tweens.add({
+            targets: text,
+            alpha: 0,
+            y: text.y - 20,
+            duration: 4000,
+            onComplete: () => {
+                text.destroy();
                 this.fadeToTitleScreen();
+            }
+        });
+    }
+
+    private showErrorMessage(message: string) {
+        const text = this.scene.add.text(
+            this.x,
+            this.y - 90,
+            `❌ ${message}`,
+            {
+                fontSize: '14px',
+                color: '#ff0000',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 },
+                align: 'center'
+            }
+        );
+        text.setOrigin(0.5);
+        text.setDepth(15);
+
+        // Fade out after 3 seconds
+        this.scene.tweens.add({
+            targets: text,
+            alpha: 0,
+            y: text.y - 20,
+            duration: 3000,
+            onComplete: () => {
+                text.destroy();
             }
         });
     }
