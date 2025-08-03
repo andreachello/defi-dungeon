@@ -35,22 +35,14 @@ export default class MinimapScene extends Phaser.Scene {
     create() {
         console.log("MinimapScene created!");
 
-        // Create background
+        // Don't create background at all
+        // this.background = this.add.rectangle(...);
+
+        // Create title
         const gameWidth = this.game.scale.width;
         const xPos = gameWidth - this.minimapSize - this.padding * 2;
         const yPos = this.padding * 2;
 
-        this.background = this.add.rectangle(
-            xPos - this.padding - 80, // Extra width for legend
-            yPos - this.padding,
-            this.minimapSize + this.padding * 2 + 80, // Extra width for legend
-            this.minimapSize + this.padding * 2,
-            this.backgroundColor,
-            this.backgroundColorAlpha
-        );
-        this.background.setDepth(1000);
-
-        // Create title
         this.title = this.add.text(
             xPos + this.minimapSize / 2,
             yPos + 15,

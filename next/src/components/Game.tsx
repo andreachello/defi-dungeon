@@ -123,8 +123,8 @@ export default function Game() {
   }, []);
 
   return (
-    <div className="bg-black relative">
-      <div className="absolute top-2 right-2 pr-4 pt-2">
+    <div className="relative">
+      <div className="absolute top-2 right-2 pr-4 pt-2 z-10">
         <WalletConnectButton />
       </div>
 
