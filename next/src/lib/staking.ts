@@ -368,20 +368,17 @@ const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Ba
 const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1INCH on Base
 
 async function get1InchSwapData(amount: string) {
-    // 1inch API endpoint (Base = chain ID 8453)
-    const url = 'https://api.1inch.dev/swap/v6.1/8453/swap';
-    
-    const params = {
-        fromTokenAddress: USDC_ADDRESS,
-        toTokenAddress: ONEINCH_TOKEN_ADDRESS,
-        fromAddress: STAKING_CONTRACT_ADDRESS,
-        slippage: 1, // 1% slippage
-        disableEstimate: false,
-        allowPartialFill: false,
-    };
-
-    const response = await axios.get(url, { params });
-    return response.data.tx.data;
+    try {
+        const response = await fetch(`/api/1inch/swap-data?amount=${amount}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch swap data');
+        }
+        const data = await response.json();
+        return data.tx.data;
+    } catch (error) {
+        console.error('Error fetching swap data:', error);
+        throw error;
+    }
 }
 
 // Interface for game session
