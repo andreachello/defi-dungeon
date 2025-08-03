@@ -46,10 +46,68 @@ export default function Game() {
       }
     };
 
+    const handleRestartGame = () => {
+      console.log("Restart game event received!");
+      if (gameRef.current) {
+        gameRef.current.destroy(true);
+        gameRef.current = null;
+      }
+
+      // Force recreation of the game after a short delay
+      setTimeout(() => {
+        if (typeof window !== "undefined" && !gameRef.current) {
+          // Make wallet status available to Phaser scenes
+          (window as any).walletConnected = isLoggedIn;
+          (window as any).userAddress = userAddress;
+
+          const config: Phaser.Types.Core.GameConfig = {
+            type: Phaser.WEBGL,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            render: { pixelArt: true },
+            physics: {
+              default: "arcade",
+              arcade: {
+                debug: false,
+                gravity: { y: 0 },
+              },
+            },
+            scene: [
+              TitleScene,
+              ShopScene,
+              DungeonScene,
+              InfoScene,
+              InventoryScene,
+              MinimapScene,
+              TimerScene,
+              HealthScene,
+            ],
+            scale: {
+              mode: Phaser.Scale.FIT,
+              autoCenter: Phaser.Scale.CENTER_BOTH,
+            },
+            parent: "game-container",
+          };
+
+          // Create the game instance
+          gameRef.current = new Phaser.Game(config);
+
+          // Force a refresh of the input system after game creation
+          setTimeout(() => {
+            if (gameRef.current) {
+              gameRef.current.scale.refresh();
+            }
+          }, 100);
+        }
+      }, 100);
+    };
+
     window.addEventListener('connectWallet', handleConnectWallet);
+    window.addEventListener('restartGame', handleRestartGame);
 
     return () => {
       window.removeEventListener('connectWallet', handleConnectWallet);
+      window.removeEventListener('restartGame', handleRestartGame);
     };
   }, [login]);
 
@@ -95,7 +153,6 @@ export default function Game() {
       setTimeout(() => {
         if (gameRef.current) {
           gameRef.current.scale.refresh();
-          gameRef.current.input.refresh();
         }
       }, 100);
     }
@@ -113,7 +170,6 @@ export default function Game() {
     const handleResize = () => {
       if (gameRef.current) {
         gameRef.current.scale.refresh();
-        gameRef.current.input.refresh();
       }
     };
 

@@ -11,7 +11,7 @@ export default class Chest {
     private body: Phaser.Physics.Arcade.Body;
     private scene: Phaser.Scene;
     private nextAction: number;
-    private isBossChest: boolean = false; // Add this property
+    private isBossChest: boolean = false;
 
     // Getters for position
     get x(): number { return this.sprite.x; }
@@ -19,7 +19,7 @@ export default class Chest {
 
     constructor(x: number, y: number, scene: Phaser.Scene, isBossChest: boolean = false) {
         this.scene = scene;
-        this.isBossChest = isBossChest; // Store the boss chest flag
+        this.isBossChest = isBossChest;
         this.sprite = scene.physics.add.sprite(x, y, Graphics.environment.name, Graphics.environment.indices.chest.closed);
 
         // Make the collision body cover the entire chest sprite
@@ -40,15 +40,15 @@ export default class Chest {
     private generateItems(isBossChest: boolean = false) {
         if (isBossChest) {
             // Boss chest contains special loot
-            const numItems = Phaser.Math.Between(2, 4); // More items for boss chest
+            const numItems = Phaser.Math.Between(2, 4);
 
             for (let i = 0; i < numItems; i++) {
-                const itemType = Phaser.Math.Between(0, 4); // Include boss key
+                const itemType = Phaser.Math.Between(0, 4);
                 let item: Item;
 
                 switch (itemType) {
                     case 0:
-                        item = Item.createHealthPotion(Phaser.Math.Between(2, 4)); // More potions
+                        item = Item.createHealthPotion(Phaser.Math.Between(2, 4));
                         break;
                     case 1:
                         item = Item.createSpeedPotion(Phaser.Math.Between(2, 4));
@@ -57,10 +57,10 @@ export default class Chest {
                         item = Item.createVisionPotion(Phaser.Math.Between(2, 4));
                         break;
                     case 3:
-                        item = Item.createGoldKey(Phaser.Math.Between(1, 3)); // Gold keys
+                        item = Item.createGoldKey(Phaser.Math.Between(1, 3));
                         break;
                     case 4:
-                        item = Item.createBossKey(1); // Boss key
+                        item = Item.createBossKey(1);
                         break;
                     default:
                         item = Item.createHealthPotion(2);
@@ -71,7 +71,6 @@ export default class Chest {
 
             console.log(`Boss chest contains ${this.items.length} special items`);
         } else {
-            // Regular chest logic (existing code)
             const numItems = 1;
 
             for (let i = 0; i < numItems; i++) {
@@ -242,6 +241,13 @@ export default class Chest {
         fadeOverlay.setDepth(20); // Very high depth to cover everything
         fadeOverlay.setAlpha(0);
 
+        // Clear player inventory
+        const dungeonScene = this.scene as DungeonScene;
+        if (dungeonScene.player && dungeonScene.player.inventory) {
+            dungeonScene.player.inventory.clear();
+            console.log('Player inventory cleared after beating the game');
+        }
+
         // Stop all other scenes first
         this.scene.scene.stop('InventoryScene');
         this.scene.scene.stop('MinimapScene');
@@ -255,8 +261,9 @@ export default class Chest {
             alpha: 1,
             duration: 2000,
             onComplete: () => {
-                // Switch to title screen
-                this.scene.scene.start('TitleScene');
+                // Dispatch custom event to restart the game
+                const restartGameEvent = new CustomEvent('restartGame');
+                window.dispatchEvent(restartGameEvent);
             }
         });
     }
