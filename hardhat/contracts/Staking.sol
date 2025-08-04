@@ -20,7 +20,6 @@ interface IAggregationRouterV5 {
     function swap(
         address executor,
         SwapDescription calldata desc,
-        bytes calldata permit,
         bytes calldata data
     ) external payable returns (uint256 returnAmount, uint256 spentAmount);
 }
@@ -95,27 +94,18 @@ contract GameStaking is Ownable, ReentrancyGuard {
                 payout = requiredStake;
             }
 
-            // Approve 1inch router to spend our USDC
+            // First approve the 1inch router to spend our tokens
             stakingToken.approve(address(oneInchRouter), payout);
             
-            // Perform the swap through 1inch
-            (uint256 returnAmount,) = oneInchRouter.swap(
-                address(0), // executor
-                IAggregationRouterV5.SwapDescription({
-                    srcToken: stakingToken,
-                    dstToken: rewardToken,
-                    srcReceiver: payable(address(this)),
-                    dstReceiver: payable(msg.sender),
-                    amount: payout,
-                    minReturnAmount: 1, // You should calculate this from the 1inch API
-                    flags: 0
-                }),
-                "", // permit
-                swapData // Get this from 1inch API
-            );
+            // Execute the swap data directly
+            (bool success, ) = address(oneInchRouter).call(swapData);
+            require(success, "Swap failed");
             
-            // Reset approval to 0 for safety
+            // Reset approval
             stakingToken.approve(address(oneInchRouter), 0);
+            
+            // Get the actual returned amount by checking balance change
+            uint256 returnAmount = rewardToken.balanceOf(msg.sender);
             
             emit GameEnded(msg.sender, gameId, true, returnAmount);
         } else {
