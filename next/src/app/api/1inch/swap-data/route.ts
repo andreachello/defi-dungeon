@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
   const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE";
-  const STAKING_CONTRACT_ADDRESS = "0x36F371216FA08C324d5DABe1C32542396C0d5200";
+  const STAKING_CONTRACT_ADDRESS = "0x962f6Ea4E7816b5daf8b34DfcFc328120801dF2F";
 
   // Log the parameters
   console.log('Swap Parameters:', {

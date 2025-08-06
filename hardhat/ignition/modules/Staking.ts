@@ -3,7 +3,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 // Base Mainnet Addresses
 const USDC_ADDRESS = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"; // USDC on Base
 const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1INCH on Base
-const ONEINCH_ROUTER = "0x1111111254EEB25477B68fb85Ed929f73A960582"; // 1inch Router v5 on Base
+const ONEINCH_ROUTER = "0x111111125421cA6dc452d289314280a0f8842A65"; // 1inch Router v6 on Base
 
 const buildGameStakingModule = buildModule("GameStaking", (m) => {
   // Configure contract parameters
