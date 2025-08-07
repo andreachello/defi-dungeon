@@ -428,7 +428,7 @@ export default class TitleScene extends Phaser.Scene {
         // Create continue game text
         const continueText = this.add.dynamicBitmapText(
             width / 2,
-            height * 0.65,
+            height * 0.55,
             "default",
             "CONTINUE GAME",
             16
@@ -440,7 +440,7 @@ export default class TitleScene extends Phaser.Scene {
         // Create continue button background
         const continueButton = this.add.rectangle(
             width / 2,
-            height * 0.65,
+            height * 0.55,
             180,
             50,
             0x333333,
