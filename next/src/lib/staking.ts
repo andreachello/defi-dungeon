@@ -367,6 +367,30 @@ const STAKING_CONTRACT_ADDRESS = "0x962f6Ea4E7816b5daf8b34DfcFc328120801dF2F";
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
 const ONEINCH_TOKEN_ADDRESS = "0xc5fecC3a29Fb57B5024eEc8a2239d4621e111CBE"; // 1INCH on Base
 
+// Add retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_DELAY = 1000; // 1 second
+const MAX_DELAY = 10000; // 10 seconds
+
+async function fetchWithRetry(url: string, retryCount = 0): Promise<Response> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response;
+  } catch (error) {
+    if (retryCount < MAX_RETRIES) {
+      const delay = Math.min(INITIAL_DELAY * Math.pow(2, retryCount), MAX_DELAY);
+      console.log(`API retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms delay`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, retryCount + 1);
+    }
+    throw error;
+  }
+}
+
 async function get1InchSwapData(amount: string) {
     try {
         const response = await fetch(`/api/1inch/swap-data?amount=${amount}`);
@@ -466,8 +490,8 @@ export async function handleGameEnd(
             // Calculate payout
             const payout = BigInt(requiredStake * winMultiplier) / BigInt(100);
             
-            // Get swap data from 1inch
-            const response = await fetch(
+            // Use fetchWithRetry instead of regular fetch
+            const response = await fetchWithRetry(
                 `/api/1inch/swap-data?amount=${payout.toString()}&receiver=${await contract.gameToPlayer(gameId)}`
             );
             if (!response.ok) {
