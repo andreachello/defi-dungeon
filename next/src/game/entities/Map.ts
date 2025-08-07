@@ -16,8 +16,8 @@ export default class Map {
   public readonly doorLayer: Phaser.Tilemaps.DynamicTilemapLayer;
   public readonly decorationLayer: Phaser.Tilemaps.DynamicTilemapLayer; // Add decoration layer
 
-  public readonly startingX: number;
-  public readonly startingY: number;
+  public readonly startingX: number = 0;
+  public readonly startingY: number = 0;
 
   public readonly slimes: Slime[];
   public readonly chests: Chest[] = [];
@@ -50,7 +50,7 @@ export default class Map {
     const attempts = 10; // Try 10 times (you can increase for even better results)
 
     for (let i = 0; i < attempts; i++) {
-      const dungeon = Dungeoneer.build({
+      const dungeon = (Dungeoneer as any).build({
         width: width,
         height: height,
         roomAttempts: 5000,

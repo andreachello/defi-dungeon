@@ -386,7 +386,7 @@ export default class DungeonScene extends Phaser.Scene {
   ) {
     // Find the pickup item that corresponds to this sprite
     const item = this.children.list.find(child =>
-      child instanceof PickupItem && child.sprite === itemSprite
+      child instanceof PickupItem && (child as any).sprite === itemSprite
     ) as PickupItem;
 
     if (item) {

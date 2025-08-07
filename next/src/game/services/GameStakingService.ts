@@ -60,7 +60,7 @@ export default class GameStakingService {
                 return false;
             }
 
-            this.provider = new ethers.BrowserProvider(window.ethereum);
+            this.provider = new ethers.BrowserProvider((window as any).ethereum);
             this.signer = await this.provider.getSigner();
             this.contract = getStakingContract(this.signer);
             this.usdcContract = getUSDCContract(this.signer);
@@ -93,21 +93,21 @@ export default class GameStakingService {
             console.log('Contract address:', contractAddress);
 
             // Check current allowance
-            const allowance = await checkUSDCAllowance(this.usdcContract, playerAddress, contractAddress);
+            const allowance = await checkUSDCAllowance(this.usdcContract, playerAddress as string, contractAddress as string);
             console.log('Current allowance:', allowance.toString());
 
             if (allowance < requiredStake) {
                 console.log('Insufficient allowance, requesting approval...');
                 console.log('Approving amount:', requiredStake.toString());
 
-                const approveTx = await approveUSDC(this.usdcContract, contractAddress, requiredStake);
+                const approveTx = await approveUSDC(this.usdcContract, contractAddress as string, requiredStake);
                 console.log('Approval transaction sent, waiting for confirmation...');
 
                 const receipt = await approveTx.wait();
                 console.log('USDC approval successful, receipt:', receipt);
 
                 // Verify the approval
-                const newAllowance = await checkUSDCAllowance(this.usdcContract, playerAddress, contractAddress);
+                const newAllowance = await checkUSDCAllowance(this.usdcContract, playerAddress as string, contractAddress as string);
                 console.log('New allowance:', newAllowance.toString());
 
                 return true;

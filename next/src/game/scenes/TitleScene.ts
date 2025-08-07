@@ -117,7 +117,7 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     private createParticles(): void {
-        this.particles = this.add.particles(0, 0, Graphics.util.name, {
+        this.particles = (this as any).add.particles(0, 0, Graphics.util.name, {
             frame: Graphics.util.indices.black,
             lifespan: 4000,
             speed: { min: 20, max: 60 },

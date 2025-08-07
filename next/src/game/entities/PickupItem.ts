@@ -16,9 +16,9 @@ export default class PickupItem extends Phaser.GameObjects.Sprite {
 
         // Add physics body for collision detection
         scene.physics.add.existing(this);
-        this.body.setSize(16, 16); // Set collision size
-        this.body.setOffset(0, 0);
-        this.body.setImmovable(true); // Make it immovable so player can pass through
+        (this.body as any).setSize(16, 16); // Set collision size
+        (this.body as any).setOffset(0, 0);
+        (this.body as any).setImmovable(true); // Make it immovable so player can pass through
 
         // Add a subtle floating animation
         this.scene.tweens.add({
@@ -51,8 +51,8 @@ export default class PickupItem extends Phaser.GameObjects.Sprite {
         }
 
         // Method 2: Try to get from current scene
-        if (!player && this.scene.player) {
-            player = this.scene.player;
+        if (!player && (this.scene as any).player) {
+            player = (this.scene as any).player;
             console.log(`✓ Found player in current scene`);
         }
 

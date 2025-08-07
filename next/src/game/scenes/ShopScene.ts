@@ -285,7 +285,7 @@ export default class ShopScene extends Phaser.Scene {
                 if (added) {
                     console.log(`Bought ${item.name} for ${item.price} gold and added to inventory`);
                     // Emit event to update inventory display
-                    this.scene.events.emit('inventoryUpdated');
+                    (this.scene as any).events.emit('inventoryUpdated');
                 } else {
                     console.log('Inventory is full!');
                     // Could show a message to the player
