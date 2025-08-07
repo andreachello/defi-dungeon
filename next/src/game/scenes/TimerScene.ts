@@ -46,20 +46,9 @@ export default class TimerScene extends Phaser.Scene {
 
     // Game timer properties
     private gameStartTime: number = 0;
-    private gameDuration: number = 20 * 1000; // 20 seconds in milliseconds (changed from 5 * 60 * 1000)
+    private gameDuration: number = 5 * 60 * 1000; // 5 minutes in milliseconds
     private lastGameSeconds: number = 0;
     private gameUpdateTimer: Phaser.Time.TimerEvent | null = null;
-
-    init() {
-        // Reset all timers and state when scene is initialized
-        this.gameStartTime = 0;
-        this.lastGameSeconds = 0;
-        if (this.gameUpdateTimer) {
-            this.gameUpdateTimer.destroy();
-            this.gameUpdateTimer = null;
-        }
-        this.player = null;
-    }
 
     constructor() {
         super({ key: "TimerScene" });
