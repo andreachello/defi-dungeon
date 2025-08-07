@@ -5,11 +5,10 @@ import Player from "../entities/Player";
 import Slime from "../entities/Slime";
 import Map from "../entities/Map";
 import PickupItem from "../entities/PickupItem";
-import { TileType } from "../entities/Tile";
 import Chest from "../entities/Chest";
 import Boss from "../entities/Boss";
 import PersistenceService from "../services/PersistenceService";
-import GameStakingService from "../services/GameStakingService";
+import GameStakingService from "../services/GameStakingService";;
 
 const worldTileHeight = 81;
 const worldTileWidth = 81;
@@ -268,6 +267,12 @@ export default class DungeonScene extends Phaser.Scene {
 
     // Launch health scene in parallel
     this.scene.launch("HealthScene");
+
+    // Launch gas price scene in parallel
+    this.scene.launch("GasPriceScene");
+
+    // Launch boss health scene in parallel
+    this.scene.launch("BossHealthScene");
 
     // Pass player reference to inventory scene
     this.scene.get("InventoryScene").events.emit('setPlayer', this.player);

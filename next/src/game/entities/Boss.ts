@@ -80,11 +80,17 @@ export default class Boss {
             const gas = parseFloat(data.fast); // or 'standard' / 'slow'
 
             if (!isNaN(gas)) {
-                // const hearts = Math.floor((gas / 1e9) * 30); // ❤️ = gas price * 30
-                const hearts = 3;
+                const hearts = Math.floor((gas / 1e9) * 5); // ❤️ = gas price * 30
+                // const hearts = 3;
                 this.bossHearts = hearts;
                 this.health = hearts;
                 console.log(`[Boss] Health set from gas price (${gas}): ${hearts}`);
+
+                // Emit boss spawned event
+                this.scene.game.events.emit('bossSpawned', {
+                    hearts: this.bossHearts,
+                    health: this.health
+                });
             }
         } catch (err) {
             console.error("Gas price fetch failed. Using fallback health.", err);
@@ -326,6 +332,9 @@ export default class Boss {
         // Update the health UI
         this.updateHealthUI();
 
+        // Emit boss health changed event
+        this.scene.game.events.emit('bossHealthChanged', { health: this.health });
+
         if (this.health <= 0) {
             this.die();
         }
@@ -341,6 +350,9 @@ export default class Boss {
             this.healthUI.destroy();
             this.healthUI = null;
         }
+
+        // Emit boss died event
+        this.scene.game.events.emit('bossDied');
 
         this.spawnLoot();
     }

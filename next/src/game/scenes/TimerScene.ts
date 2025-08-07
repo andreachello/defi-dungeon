@@ -21,9 +21,9 @@ export default class TimerScene extends Phaser.Scene {
     private gameTimerText: Phaser.GameObjects.Text;
     private gameTimerIcon: Phaser.GameObjects.Sprite;
 
-    // Timer configuration
-    private readonly timerWidth = 250;
-    private readonly timerHeight = 60;
+    // Timer configuration - updated to match other boxes
+    private readonly timerWidth = 250; // Already 250
+    private readonly timerHeight = 50; // Changed from 60 to 50
     private readonly padding = 15;
     private readonly backgroundColor = 0x000000;
     private readonly backgroundColorAlpha = 0.9;
@@ -31,6 +31,14 @@ export default class TimerScene extends Phaser.Scene {
     private readonly visionBorderColor = 0x0000ff;
     private readonly gameTimerBorderColor = 0xff0000;
     private readonly borderWidth = 2;
+
+    // Gas price positioning constants (matching GasPriceScene)
+    private readonly heartStartY = 30;
+    private readonly heartSize = 16;
+    private readonly heartScale = 1.5;
+    private readonly gasPriceHeight = 50; // Updated to match new gas price height
+    private readonly gasPriceOffset = 25; // 25 pixels below hearts
+    private readonly bossHealthHeight = 50; // Already 50
 
     // Countdown properties
     private speedBoostStartTime: number = 0;
@@ -84,8 +92,16 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private createGameTimer() {
+        // Calculate position below boss health
+        const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
+        const gasPriceY = heartBottomY + this.gasPriceOffset;
+        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
+        const bossHealthY = gasPriceBottomY + 10; // 10 pixels below gas price
+        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
+        const timerY = bossHealthBottomY + 10; // 10 pixels below boss health
+
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + 20;
+        const yPos = timerY;
 
         this.gameTimerBackground = this.add.rectangle(
             xPos,
@@ -142,8 +158,17 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private createSpeedBoostTimer() {
+        // Calculate position below game timer
+        const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
+        const gasPriceY = heartBottomY + this.gasPriceOffset;
+        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
+        const bossHealthY = gasPriceBottomY + 10;
+        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
+        const gameTimerY = bossHealthBottomY + 10;
+        const speedTimerY = gameTimerY + this.timerHeight + 10; // 10 pixels below game timer
+
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + 50 + this.timerHeight + 10; // Pushed down by 50 pixels
+        const yPos = speedTimerY;
 
         this.background = this.add.rectangle(
             xPos,
@@ -213,8 +238,18 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private createVisionBoostTimer() {
+        // Calculate position below speed timer
+        const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
+        const gasPriceY = heartBottomY + this.gasPriceOffset;
+        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
+        const bossHealthY = gasPriceBottomY + 10;
+        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
+        const gameTimerY = bossHealthBottomY + 10;
+        const speedTimerY = gameTimerY + this.timerHeight + 10;
+        const visionTimerY = speedTimerY + this.timerHeight + 10; // 10 pixels below speed timer
+
         const xPos = this.padding * 2;
-        const yPos = this.padding * 2 + 50 + (this.timerHeight + 10) * 2; // Pushed down by 50 pixels
+        const yPos = visionTimerY;
 
         this.visionBackground = this.add.rectangle(
             xPos,

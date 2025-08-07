@@ -231,10 +231,10 @@ export default class Map {
         }
       }
 
-      // Spawn chest in normal rooms with 40% chance
+      // chest spawn chance
       if (!this.lockedRooms.has(roomIndex) && !this.goldLockedRooms.has(roomIndex)) {
         const chestChance = Math.random();
-        if (chestChance < 0.4) { // 40% chance
+        if (chestChance < 1) {
           console.log(`Placing chest in room ${roomIndex} at (${room.x}, ${room.y})`);
           this.placeChestInRoom(room, roomTL, roomBounds);
         } else {

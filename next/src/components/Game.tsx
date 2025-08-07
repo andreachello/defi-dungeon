@@ -12,6 +12,8 @@ import HealthScene from "../game/scenes/HealthScene";
 import ShopScene from "../game/scenes/ShopScene";
 import WalletConnectButton from "./WalletConnectButton";
 import { useAuth } from "@/hooks/useAuth";
+import GasPriceScene from "@/game/scenes/GasPriceScene";
+import BossHealthScene from "@/game/scenes/BossHealthScene";
 
 export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -100,6 +102,8 @@ export default function Game() {
               MinimapScene,
               TimerScene,
               HealthScene,
+              GasPriceScene, // Add the new gas price scene
+              BossHealthScene, // Add the boss health scene
             ],
             scale: {
               mode: Phaser.Scale.FIT,
@@ -188,6 +192,8 @@ export default function Game() {
           MinimapScene,
           TimerScene,
           HealthScene,
+          GasPriceScene, // Add the new gas price scene
+          BossHealthScene, // Add the boss health scene
         ],
         scale: {
           mode: Phaser.Scale.FIT,
