@@ -16,9 +16,9 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
 
-  const { isLoggedIn, userAddress, login, logout } = useAuth();
+  const { isLoggedIn, userAddress, isOnBaseNetwork, login, logout } = useAuth();
 
-  // Set up event listener for wallet connection
+  // Set up event listener for wallet connection and network switching
   useEffect(() => {
     const handleConnectWallet = () => {
       console.log("Connect wallet event received!");
@@ -46,6 +46,19 @@ export default function Game() {
       }
     };
 
+    const handleSwitchNetwork = () => {
+      console.log("Switch network event received!");
+
+      // Try to open the AppKit modal for network switching
+      const appkitModal = (window as any).appkitModal;
+      if (appkitModal && appkitModal.open) {
+        console.log("Opening AppKit modal for network switching...");
+        appkitModal.open();
+      } else {
+        console.log("AppKit modal not found for network switching");
+      }
+    };
+
     const handleRestartGame = () => {
       console.log("Restart game event received!");
       if (gameRef.current) {
@@ -56,9 +69,10 @@ export default function Game() {
       // Force recreation of the game after a short delay
       setTimeout(() => {
         if (typeof window !== "undefined" && !gameRef.current) {
-          // Make wallet status available to Phaser scenes
+          // Make wallet status and network info available to Phaser scenes
           (window as any).walletConnected = isLoggedIn;
           (window as any).userAddress = userAddress;
+          (window as any).isOnBaseNetwork = isOnBaseNetwork;
 
           const config: Phaser.Types.Core.GameConfig = {
             type: Phaser.WEBGL,
@@ -108,17 +122,43 @@ export default function Game() {
     };
 
     window.addEventListener('connectWallet', handleConnectWallet);
+    window.addEventListener('switchNetwork', handleSwitchNetwork);
     window.addEventListener('restartGame', handleRestartGame);
 
     return () => {
       window.removeEventListener('connectWallet', handleConnectWallet);
+      window.removeEventListener('switchNetwork', handleSwitchNetwork);
       window.removeEventListener('restartGame', handleRestartGame);
     };
   }, [login]);
 
+  // Update network status continuously
+  useEffect(() => {
+    // Update the global variables whenever auth state changes
+    (window as any).walletConnected = isLoggedIn;
+    (window as any).userAddress = userAddress;
+    (window as any).isOnBaseNetwork = isOnBaseNetwork;
+
+    console.log('Game: Updated network status:', {
+      walletConnected: isLoggedIn,
+      userAddress,
+      isOnBaseNetwork
+    });
+
+    // Dispatch a custom event to notify the TitleScene about the network change
+    const networkChangeEvent = new CustomEvent('networkStatusChanged', {
+      detail: {
+        walletConnected: isLoggedIn,
+        userAddress,
+        isOnBaseNetwork
+      }
+    });
+    window.dispatchEvent(networkChangeEvent);
+  }, [isLoggedIn, userAddress, isOnBaseNetwork]);
+
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
-      // Make wallet status available to Phaser scenes
+      // Make wallet status and network info available to Phaser scenes
       (window as any).walletConnected = isLoggedIn;
       (window as any).userAddress = userAddress;
 
@@ -173,7 +213,7 @@ export default function Game() {
         gameRef.current = null;
       }
     };
-  }, [isLoggedIn, userAddress]);
+  }, [isLoggedIn, userAddress, isOnBaseNetwork]);
 
   // Add resize handler to ensure proper scaling
   useEffect(() => {

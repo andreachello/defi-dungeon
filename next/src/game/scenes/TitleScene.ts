@@ -16,9 +16,11 @@ export default class TitleScene extends Phaser.Scene {
     private shopButtonText?: Phaser.GameObjects.DynamicBitmapText;
     private isTransitioning: boolean = false;
     private walletConnected: boolean = false;
+    private isOnBaseNetwork: boolean = false;
     private stakingService: GameStakingService;
     private loadingText?: Phaser.GameObjects.DynamicBitmapText;
     private isStartingGame: boolean = false;
+    private networkChangeHandler?: (event: CustomEvent) => void;
 
     constructor() {
         super({ key: "TitleScene" });
@@ -43,9 +45,33 @@ export default class TitleScene extends Phaser.Scene {
     create(): void {
         const { width, height } = this.scale;
 
-        // Check wallet connection status
+        // Check wallet connection status and network
         this.walletConnected = (window as any).walletConnected || false;
-        console.log('TitleScene: Wallet connected:', this.walletConnected);
+        this.isOnBaseNetwork = (window as any).isOnBaseNetwork || false;
+        console.log('TitleScene: Initial state:', {
+            walletConnected: this.walletConnected,
+            isOnBaseNetwork: this.isOnBaseNetwork,
+            windowWalletConnected: (window as any).walletConnected,
+            windowIsOnBaseNetwork: (window as any).isOnBaseNetwork
+        });
+
+        // Add event listener for network status changes
+        const handleNetworkChange = (event: CustomEvent) => {
+            console.log('TitleScene: Network change event received:', event.detail);
+            const { walletConnected, isOnBaseNetwork } = event.detail;
+
+            if (this.walletConnected !== walletConnected || this.isOnBaseNetwork !== isOnBaseNetwork) {
+                console.log('TitleScene: Updating network status from event');
+                this.walletConnected = walletConnected;
+                this.isOnBaseNetwork = isOnBaseNetwork;
+                this.updateButtonText();
+            }
+        };
+
+        window.addEventListener('networkStatusChanged', handleNetworkChange as EventListener);
+
+        // Store the event listener for cleanup
+        this.networkChangeHandler = handleNetworkChange;
 
         // Initialize staking service if wallet is connected
         if (this.walletConnected) {
@@ -171,8 +197,19 @@ export default class TitleScene extends Phaser.Scene {
     private createStartButton(): void {
         const { width, height } = this.scale;
 
-        // Create button text based on wallet connection
-        const buttonText = this.walletConnected ? "START GAME" : "CONNECT WALLET";
+        // Only show START GAME if wallet is connected AND on Base network
+        const canStartGame = this.walletConnected && this.isOnBaseNetwork;
+
+        // Create button text based on wallet connection and network
+        let buttonText: string;
+        if (!this.walletConnected) {
+            buttonText = "CONNECT WALLET";
+        } else if (!this.isOnBaseNetwork) {
+            buttonText = "SWITCH TO BASE";
+        } else {
+            buttonText = "START GAME";
+        }
+
         this.startButtonText = this.add.dynamicBitmapText(
             width / 2,
             height * 0.75,
@@ -185,8 +222,8 @@ export default class TitleScene extends Phaser.Scene {
         this.startButtonText.setAlpha(1.0); // 100% opacity
         this.startButtonText.setDepth(10); // Higher depth to ensure it's on top
 
-        // Only create rectangle background if wallet is connected
-        if (this.walletConnected) {
+        // Only create rectangle background if wallet is connected and on Base network
+        if (canStartGame) {
             // Create button background
             this.startButton = this.add.rectangle(
                 width / 2,
@@ -230,7 +267,7 @@ export default class TitleScene extends Phaser.Scene {
                 ease: 'Sine.easeInOut'
             });
         } else {
-            // Make the text interactive when wallet is not connected
+            // Make the text interactive when wallet is not connected or not on Base network
             this.startButtonText.setInteractive();
 
             // Add a visual indicator that the text is clickable
@@ -243,7 +280,7 @@ export default class TitleScene extends Phaser.Scene {
             });
 
             this.startButtonText.on('pointerdown', () => {
-                console.log('Connect wallet text clicked!'); // Debug log
+                console.log('Button clicked!'); // Debug log
                 this.handleStartAction();
             });
         }
@@ -310,10 +347,34 @@ export default class TitleScene extends Phaser.Scene {
     private createInfoText(): void {
         const { width, height } = this.scale;
 
-        // Instructions based on wallet connection
+        // Add network and ETH requirements
+        const networkRequirements = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.65,
+            "default",
+            "Switch to Base mainnet and have at least 0.1 Base ETH",
+            10
+        );
+        networkRequirements.setOrigin(0.5);
+        networkRequirements.setTint(0xffffff); // White color
+        networkRequirements.setDepth(5);
+
+        // Add game cost information
+        const gameCost = this.add.dynamicBitmapText(
+            width / 2,
+            height * 0.68,
+            "default",
+            "Each game costs 0.1 Base USDC",
+            10
+        );
+        gameCost.setOrigin(0.5);
+        gameCost.setTint(0xffffff); // White color
+        gameCost.setDepth(5);
+
+        // Instructions below shop button
         const instructions = this.add.dynamicBitmapText(
             width / 2,
-            height * 0.92,
+            height * 0.90,
             "default",
             this.walletConnected
                 ? "Click the button to start"
@@ -321,7 +382,7 @@ export default class TitleScene extends Phaser.Scene {
             12
         );
         instructions.setOrigin(0.5);
-        instructions.setTint(0x888888);
+        instructions.setTint(0xffffff); // White color
         instructions.setDepth(5);
 
         // Version or additional info
@@ -333,7 +394,7 @@ export default class TitleScene extends Phaser.Scene {
             10
         );
         version.setOrigin(0.5);
-        version.setTint(0x666666);
+        version.setTint(0x666666); // Keep version in gray
         version.setDepth(5);
     }
 
@@ -418,15 +479,21 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     private handleStartAction(): void {
-        console.log('TitleScene: handleStartAction called, walletConnected:', this.walletConnected);
-        if (this.walletConnected) {
-            console.log('TitleScene: Starting game with staking...');
-            this.startGameWithStaking();
-        } else {
+        console.log('TitleScene: handleStartAction called, walletConnected:', this.walletConnected, 'isOnBaseNetwork:', this.isOnBaseNetwork);
+
+        if (!this.walletConnected) {
             console.log('TitleScene: Dispatching connectWallet event...');
             // Dispatch custom event to trigger wallet connection modal
             const connectWalletEvent = new CustomEvent('connectWallet');
             window.dispatchEvent(connectWalletEvent);
+        } else if (!this.isOnBaseNetwork) {
+            console.log('TitleScene: Dispatching switchNetwork event...');
+            // Dispatch custom event to trigger network switching
+            const switchNetworkEvent = new CustomEvent('switchNetwork');
+            window.dispatchEvent(switchNetworkEvent);
+        } else {
+            console.log('TitleScene: Starting game with staking...');
+            this.startGameWithStaking();
         }
     }
 
@@ -586,21 +653,50 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     update(): void {
-        // Check if wallet connection status has changed
+        // Check if wallet connection status or network has changed
         const currentWalletStatus = (window as any).walletConnected || false;
-        if (currentWalletStatus !== this.walletConnected) {
+        const currentNetworkStatus = (window as any).isOnBaseNetwork || false;
+
+        // Debug logging
+        if (currentWalletStatus !== this.walletConnected || currentNetworkStatus !== this.isOnBaseNetwork) {
+            console.log('TitleScene: Network status changed:', {
+                oldWalletConnected: this.walletConnected,
+                newWalletConnected: currentWalletStatus,
+                oldIsOnBaseNetwork: this.isOnBaseNetwork,
+                newIsOnBaseNetwork: currentNetworkStatus
+            });
+
             this.walletConnected = currentWalletStatus;
+            this.isOnBaseNetwork = currentNetworkStatus;
             this.updateButtonText();
         }
     }
 
     private updateButtonText(): void {
         if (this.startButtonText) {
-            const buttonText = this.walletConnected ? "START GAME" : "CONNECT WALLET";
+            let buttonText: string;
+            if (!this.walletConnected) {
+                buttonText = "CONNECT WALLET";
+            } else if (!this.isOnBaseNetwork) {
+                buttonText = "SWITCH TO BASE";
+            } else {
+                buttonText = "START GAME";
+            }
+
+            console.log('TitleScene: Updating button text:', {
+                walletConnected: this.walletConnected,
+                isOnBaseNetwork: this.isOnBaseNetwork,
+                buttonText
+            });
+
             this.startButtonText.setText(buttonText);
 
-            // Update the button state based on wallet connection
-            if (this.walletConnected) {
+            // Update the button state based on wallet connection and network
+            const canStartGame = this.walletConnected && this.isOnBaseNetwork;
+
+            console.log('TitleScene: Can start game:', canStartGame);
+
+            if (canStartGame) {
                 // Create rectangle background if it doesn't exist
                 if (!this.startButton) {
                     const { width, height } = this.scale;
@@ -669,10 +765,17 @@ export default class TitleScene extends Phaser.Scene {
                 });
 
                 this.startButtonText.on('pointerdown', () => {
-                    console.log('Connect wallet text clicked!'); // Debug log
+                    console.log('Button clicked!'); // Debug log
                     this.handleStartAction();
                 });
             }
         }
     }
-} 
+
+    shutdown(): void {
+        // Remove event listener when scene is destroyed
+        if (this.networkChangeHandler) {
+            window.removeEventListener('networkStatusChanged', this.networkChangeHandler as EventListener);
+        }
+    }
+}
