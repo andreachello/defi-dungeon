@@ -49,37 +49,82 @@ export default class TimerScene extends Phaser.Scene {
     private gameDuration: number = 5 * 60 * 1000; // 5 minutes in milliseconds
     private lastGameSeconds: number = 0;
     private gameUpdateTimer: Phaser.Time.TimerEvent | null = null;
+    private lastUpdateTime: number = 0;
+    private elapsedSeconds: number = 0; // Add this to track elapsed time
 
     constructor() {
         super({ key: "TimerScene" });
     }
 
+    init() {
+        console.log("TimerScene init called"); // Debug log
+        // Reset all timer-related properties
+        this.elapsedSeconds = 0; // Reset elapsed time
+        this.lastGameSeconds = Math.ceil(this.gameDuration / 1000);
+        this.lastUpdateTime = 0;
+        
+        // Clean up timers
+        if (this.gameUpdateTimer) {
+            console.log("Cleaning up game timer in init"); // Debug log
+            this.gameUpdateTimer.destroy();
+            this.gameUpdateTimer = null;
+        }
+        
+        // Reset boost-related properties
+        this.speedBoostStartTime = 0;
+        this.speedBoostDuration = 0;
+        this.lastDisplayedSeconds = 0;
+        this.visionBoostStartTime = 0;
+        this.visionBoostDuration = 0;
+        this.lastVisionSeconds = 0;
+        
+        if (this.updateTimer) {
+            this.updateTimer.destroy();
+            this.updateTimer = null;
+        }
+        if (this.visionUpdateTimer) {
+            this.visionUpdateTimer.destroy();
+            this.visionUpdateTimer = null;
+        }
+    }
+
     create() {
-        console.log("TimerScene created!");
+        console.log("TimerScene create called"); // Debug log
 
-        // Create game timer first (top left)
+        // Create all UI elements
         this.createGameTimer();
-
-        // Create speed boost timer (below game timer)
         this.createSpeedBoostTimer();
-
-        // Create vision boost timer (below speed boost timer)
         this.createVisionBoostTimer();
 
-        // Listen for player reference updates and boost events
+        // Set up event listeners
+        this.events.removeAllListeners();
         this.events.on('setPlayer', this.setPlayer, this);
         this.events.on('speedBoostActivated', this.onSpeedBoostActivated, this);
         this.events.on('speedBoostExpired', this.onSpeedBoostExpired, this);
         this.events.on('visionBoostActivated', this.onVisionBoostActivated, this);
         this.events.on('visionBoostExpired', this.onVisionBoostExpired, this);
-
-        // Listen for global game over event
+        
         this.game.events.on('gameOver', this.onGameOver, this);
 
-        // Start game timer
-        this.startGameTimer();
+        // Initialize timer values
+        this.elapsedSeconds = 0;
+        this.lastGameSeconds = Math.ceil(this.gameDuration / 1000);
+        this.lastUpdateTime = this.time.now;
 
-        console.log("TimerScene setup completed");
+        // Force initial update
+        this.updateGameTimer();
+
+        console.log("TimerScene create completed");
+    }
+
+    update(time: number, delta: number) {
+        // Update timer every second
+        if (time - this.lastUpdateTime >= 1000) {
+            console.log("Timer update check");
+            this.elapsedSeconds++;
+            this.updateGameTimer();
+            this.lastUpdateTime = time;
+        }
     }
 
     private createGameTimer() {
@@ -282,23 +327,11 @@ export default class TimerScene extends Phaser.Scene {
         this.visionTimerText.setVisible(false);
     }
 
-    private startGameTimer() {
-        this.gameStartTime = this.time.now;
-        this.lastGameSeconds = Math.ceil(this.gameDuration / 1000);
-
-        this.gameUpdateTimer = this.time.addEvent({
-            delay: 1000,
-            callback: this.updateGameTimer,
-            callbackScope: this,
-            loop: true
-        });
-    }
-
     private updateGameTimer() {
-        const currentTime = this.time.now;
-        const elapsedTime = currentTime - this.gameStartTime;
-        const remainingTime = Math.max(0, this.gameDuration - elapsedTime);
-        const remainingSeconds = Math.ceil(remainingTime / 1000);
+        const totalSeconds = Math.ceil(this.gameDuration / 1000);
+        const remainingSeconds = Math.max(0, totalSeconds - this.elapsedSeconds);
+
+        console.log(`Timer update - Elapsed: ${this.elapsedSeconds}, Remaining: ${remainingSeconds}`);
 
         if (remainingSeconds > 0) {
             const minutes = Math.floor(remainingSeconds / 60);
@@ -306,6 +339,7 @@ export default class TimerScene extends Phaser.Scene {
             const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
             if (this.gameTimerText) {
+                console.log(`Updating timer display to: ${timeString}`);
                 this.gameTimerText.setText(timeString);
 
                 // Add visual feedback for last 30 seconds
