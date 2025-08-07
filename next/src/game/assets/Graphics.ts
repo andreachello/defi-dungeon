@@ -52,7 +52,7 @@ const environment = {
       vertical: 0x92,
       destroyed: 0x35,
       lockedHorizontal: 0x91,
-      lockedVertical: 0x94,
+      lockedVertical: 0x91,
       bossDoor: 0x83,
       goldLockedHorizontal: 0x93,
       goldLockedVertical: 0x93,
