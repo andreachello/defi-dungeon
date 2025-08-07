@@ -352,7 +352,7 @@ export default class TitleScene extends Phaser.Scene {
             width / 2,
             height * 0.65,
             "default",
-            "Switch to Base mainnet and have at least 0.1 Base ETH",
+            "Switch to Base mainnet and have at least 0.1 Base USDC",
             10
         );
         networkRequirements.setOrigin(0.5);
