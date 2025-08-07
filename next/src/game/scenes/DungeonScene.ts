@@ -8,6 +8,8 @@ import PickupItem from "../entities/PickupItem";
 import { TileType } from "../entities/Tile";
 import Chest from "../entities/Chest";
 import Boss from "../entities/Boss";
+import PersistenceService from "../services/PersistenceService";
+import GameStakingService from "../services/GameStakingService";
 
 const worldTileHeight = 81;
 const worldTileWidth = 81;
@@ -426,6 +428,10 @@ export default class DungeonScene extends Phaser.Scene {
     if (this.player) {
       this.player.sprite.setVelocity(0, 0);
     }
+
+    // Clear all saved game data
+    PersistenceService.clearGameData();
+    GameStakingService.getInstance().clearCurrentSession();
 
     // Optional: Add visual effects
     this.cameras.main.shake(500, 0.01);

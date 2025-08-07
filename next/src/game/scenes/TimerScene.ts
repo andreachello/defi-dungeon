@@ -46,9 +46,20 @@ export default class TimerScene extends Phaser.Scene {
 
     // Game timer properties
     private gameStartTime: number = 0;
-    private gameDuration: number = 5 * 60 * 1000; // 5 minutes in milliseconds
+    private gameDuration: number = 20 * 1000; // 20 seconds in milliseconds (changed from 5 * 60 * 1000)
     private lastGameSeconds: number = 0;
     private gameUpdateTimer: Phaser.Time.TimerEvent | null = null;
+
+    init() {
+        // Reset all timers and state when scene is initialized
+        this.gameStartTime = 0;
+        this.lastGameSeconds = 0;
+        if (this.gameUpdateTimer) {
+            this.gameUpdateTimer.destroy();
+            this.gameUpdateTimer = null;
+        }
+        this.player = null;
+    }
 
     constructor() {
         super({ key: "TimerScene" });
@@ -326,8 +337,8 @@ export default class TimerScene extends Phaser.Scene {
     private endGame() {
         console.log("Game Over! Time's up!");
 
-        // Emit game over event instead of handling it directly
-        this.events.emit('gameOver', { reason: 'time_up' });
+        // Emit to DungeonScene first (like player death does)
+        this.scene.get('DungeonScene').events.emit('gameOver', { reason: 'time_up' });
     }
 
     private setPlayer(player: Player) {
