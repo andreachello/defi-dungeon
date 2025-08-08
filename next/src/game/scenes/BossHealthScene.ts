@@ -9,6 +9,7 @@ export default class BossHealthScene extends Phaser.Scene {
     private bossIcon: Phaser.GameObjects.Sprite;
     private bossHearts: number = 0;
     private currentHealth: number = 0;
+    private isInBossRoom: boolean = false; // Add this property
 
     // Boss health UI configuration - positioned below gas price and above timers
     private readonly bossHealthWidth = 250;
@@ -103,7 +104,26 @@ export default class BossHealthScene extends Phaser.Scene {
         this.game.events.on('bossSpawned', this.onBossSpawned, this);
         this.game.events.on('bossDied', this.onBossDied, this);
 
+        // Listen for boss room events
+        this.game.events.on('playerEnteredBossRoom', this.onPlayerEnteredBossRoom, this);
+        this.game.events.on('playerLeftBossRoom', this.onPlayerLeftBossRoom, this);
+
         console.log("BossHealthScene setup completed");
+    }
+
+    private onPlayerEnteredBossRoom(): void {
+        console.log("BossHealthScene: Player entered boss room");
+        this.isInBossRoom = true;
+        // Only show boss health if boss exists
+        if (this.bossHearts > 0) {
+            this.showBossHealth();
+        }
+    }
+
+    private onPlayerLeftBossRoom(): void {
+        console.log("BossHealthScene: Player left boss room");
+        this.isInBossRoom = false;
+        this.hideBossHealth();
     }
 
     private onBossSpawned(data: { hearts: number; health: number }): void {
@@ -111,7 +131,10 @@ export default class BossHealthScene extends Phaser.Scene {
         this.bossHearts = data.hearts;
         this.currentHealth = data.health;
 
-        this.showBossHealth();
+        // Only show if player is in boss room
+        if (this.isInBossRoom) {
+            this.showBossHealth();
+        }
         this.createBossHearts();
         this.updateBossHealthDisplay();
     }
@@ -164,18 +187,18 @@ export default class BossHealthScene extends Phaser.Scene {
         const heartStartY = yPos + this.bossHealthHeight / 2;
 
         // Create heart sprites
-        for (let i = 0; i < this.bossHearts; i++) {
-            const heartSprite = this.add.sprite(
-                heartStartX + i * (this.heartSize + this.heartSpacing),
-                heartStartY,
-                Graphics.environment.name,
-                Graphics.environment.indices.heart.full
-            );
-            heartSprite.setDepth(1001);
-            heartSprite.setScale(this.heartScale);
-            heartSprite.setVisible(false);
-            this.bossHeartSprites.push(heartSprite);
-        }
+        // for (let i = 0; i < this.bossHearts; i++) {
+        //     const heartSprite = this.add.sprite(
+        //         heartStartX + i * (this.heartSize + this.heartSpacing),
+        //         heartStartY,
+        //         Graphics.environment.name,
+        //         Graphics.environment.indices.heart.full
+        //     );
+        //     heartSprite.setDepth(1001);
+        //     heartSprite.setScale(this.heartScale);
+        //     heartSprite.setVisible(false);
+        //     this.bossHeartSprites.push(heartSprite);
+        // }
 
         console.log(`Created ${this.bossHeartSprites.length} boss heart sprites`);
     }

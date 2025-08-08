@@ -58,6 +58,8 @@ export default class TimerScene extends Phaser.Scene {
     private lastGameSeconds: number = 0;
     private gameUpdateTimer: Phaser.Time.TimerEvent | null = null;
 
+    private isInBossRoom: boolean = false; // Add this property
+
     constructor() {
         super({ key: "TimerScene" });
     }
@@ -81,6 +83,10 @@ export default class TimerScene extends Phaser.Scene {
         this.events.on('visionBoostActivated', this.onVisionBoostActivated, this);
         this.events.on('visionBoostExpired', this.onVisionBoostExpired, this);
 
+        // Listen for boss room events
+        this.game.events.on('playerEnteredBossRoom', this.onPlayerEnteredBossRoom, this);
+        this.game.events.on('playerLeftBossRoom', this.onPlayerLeftBossRoom, this);
+
         // Listen for global game over event
         this.game.events.on('gameOver', this.onGameOver, this);
 
@@ -92,16 +98,12 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private createGameTimer() {
-        // Calculate position below boss health
+        // Calculate position right below player hearts (default position)
         const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
-        const gasPriceY = heartBottomY + this.gasPriceOffset;
-        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
-        const bossHealthY = gasPriceBottomY + 10; // 10 pixels below gas price
-        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
-        const timerY = bossHealthBottomY + 10; // 10 pixels below boss health
+        const gameTimerY = heartBottomY + 25; // 25 pixels below hearts
 
         const xPos = this.padding * 2;
-        const yPos = timerY;
+        const yPos = gameTimerY;
 
         this.gameTimerBackground = this.add.rectangle(
             xPos,
@@ -160,12 +162,8 @@ export default class TimerScene extends Phaser.Scene {
     private createSpeedBoostTimer() {
         // Calculate position below game timer
         const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
-        const gasPriceY = heartBottomY + this.gasPriceOffset;
-        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
-        const bossHealthY = gasPriceBottomY + 10;
-        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
-        const gameTimerY = bossHealthBottomY + 10;
-        const speedTimerY = gameTimerY + this.timerHeight + 10; // 10 pixels below game timer
+        const gameTimerY = heartBottomY + 25;
+        const speedTimerY = gameTimerY + this.timerHeight + 25; // Increased from 10 to 25 pixels below game timer
 
         const xPos = this.padding * 2;
         const yPos = speedTimerY;
@@ -240,13 +238,10 @@ export default class TimerScene extends Phaser.Scene {
     private createVisionBoostTimer() {
         // Calculate position below speed timer
         const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
-        const gasPriceY = heartBottomY + this.gasPriceOffset;
-        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
-        const bossHealthY = gasPriceBottomY + 10;
-        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
-        const gameTimerY = bossHealthBottomY + 10;
-        const speedTimerY = gameTimerY + this.timerHeight + 10;
+        const gameTimerY = heartBottomY + 25;
+        const speedTimerY = gameTimerY + this.timerHeight + 25; // Increased from 10 to 25 pixels below game timer
         const visionTimerY = speedTimerY + this.timerHeight + 10; // 10 pixels below speed timer
+        
 
         const xPos = this.padding * 2;
         const yPos = visionTimerY;
@@ -587,6 +582,110 @@ export default class TimerScene extends Phaser.Scene {
                 this.visionUpdateTimer.destroy();
                 this.visionUpdateTimer = null;
             }
+        }
+    }
+
+    private onPlayerEnteredBossRoom(): void {
+        console.log("TimerScene: Player entered boss room");
+        this.isInBossRoom = true;
+        this.repositionTimers();
+    }
+
+    private onPlayerLeftBossRoom(): void {
+        console.log("TimerScene: Player left boss room");
+        this.isInBossRoom = false;
+        this.repositionTimers();
+    }
+
+    private repositionTimers(): void {
+        if (this.isInBossRoom) {
+            // Position timers below boss health UI
+            this.positionTimersBelowBossUI();
+        } else {
+            // Position timers right below player hearts
+            this.positionTimersBelowHearts();
+        }
+    }
+
+    private positionTimersBelowBossUI(): void {
+        // Calculate position below boss health
+        const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
+        const gasPriceY = heartBottomY + this.gasPriceOffset;
+        const gasPriceBottomY = gasPriceY + this.gasPriceHeight;
+        const bossHealthY = gasPriceBottomY + 25; // 25 pixels below gas price
+        const bossHealthBottomY = bossHealthY + this.bossHealthHeight;
+        const gameTimerY = bossHealthBottomY + 10; // 10 pixels below boss health
+        const speedTimerY = gameTimerY + this.timerHeight + 25; // Increased from 10 to 25 pixels below game timer
+        const visionTimerY = speedTimerY + this.timerHeight + 10; // 10 pixels below speed timer
+
+        this.repositionGameTimer(gameTimerY);
+        this.repositionSpeedTimer(speedTimerY);
+        this.repositionVisionTimer(visionTimerY);
+    }
+
+    private positionTimersBelowHearts(): void {
+        // Calculate position right below player hearts
+        const heartBottomY = this.heartStartY + (this.heartSize * this.heartScale) / 2;
+        const gameTimerY = heartBottomY + 25; // 25 pixels below hearts
+        const speedTimerY = gameTimerY + this.timerHeight + 25; // Increased from 10 to 25 pixels below game timer
+        const visionTimerY = speedTimerY + this.timerHeight + 10; // 10 pixels below speed timer
+
+        this.repositionGameTimer(gameTimerY);
+        this.repositionSpeedTimer(speedTimerY);
+        this.repositionVisionTimer(visionTimerY);
+    }
+
+    private repositionGameTimer(yPos: number): void {
+        const xPos = this.padding * 2;
+
+        if (this.gameTimerBackground) {
+            this.gameTimerBackground.setPosition(xPos, yPos);
+        }
+        if (this.gameTimerIcon) {
+            this.gameTimerIcon.setPosition(xPos + 30, yPos + this.timerHeight / 2);
+        }
+        if (this.gameTimerText) {
+            this.gameTimerText.setPosition(xPos + 70, yPos + this.timerHeight / 2);
+        }
+    }
+
+    private repositionSpeedTimer(yPos: number): void {
+        const xPos = this.padding * 2;
+
+        if (this.background) {
+            this.background.setPosition(xPos, yPos);
+        }
+        if (this.speedIcon) {
+            this.speedIcon.setPosition(xPos + 30, yPos + this.timerHeight / 2 - 40);
+        }
+        if (this.title) {
+            this.title.setPosition(xPos + 70, yPos + this.timerHeight / 2 - 40);
+        }
+        if (this.countdownText) {
+            this.countdownText.setPosition(xPos + 180, yPos + this.timerHeight / 2 - 40);
+        }
+        if (this.timerText) {
+            this.timerText.setPosition(xPos + 180, yPos + this.timerHeight - 8 - 40);
+        }
+    }
+
+    private repositionVisionTimer(yPos: number): void {
+        const xPos = this.padding * 2;
+
+        if (this.visionBackground) {
+            this.visionBackground.setPosition(xPos, yPos);
+        }
+        if (this.visionIcon) {
+            this.visionIcon.setPosition(xPos + 30, yPos + this.timerHeight / 2);
+        }
+        if (this.visionTitle) {
+            this.visionTitle.setPosition(xPos + 70, yPos + this.timerHeight / 2);
+        }
+        if (this.visionCountdownText) {
+            this.visionCountdownText.setPosition(xPos + 180, yPos + this.timerHeight / 2);
+        }
+        if (this.visionTimerText) {
+            this.visionTimerText.setPosition(xPos + 180, yPos + this.timerHeight - 8);
         }
     }
 }

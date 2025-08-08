@@ -34,6 +34,7 @@ export default class DungeonScene extends Phaser.Scene {
 
   private bossAttackCooldown: number = 0;
   private readonly BOSS_ATTACK_COOLDOWN = 500; // 0.5 seconds in milliseconds
+  private inBossRoom: boolean = false; // Add this property
 
   preload(): void {
     this.load.spritesheet(Graphics.environment.name, Graphics.environment.file, {
@@ -354,6 +355,9 @@ export default class DungeonScene extends Phaser.Scene {
 
     this.fov!.update(player, bounds, delta);
 
+    // Check if player is in boss room and emit events
+    this.checkBossRoomStatus(player);
+
     // Update minimap
     const minimapScene = this.scene.get("MinimapScene");
     if (minimapScene) {
@@ -383,6 +387,36 @@ export default class DungeonScene extends Phaser.Scene {
         this.bossAttackCooldown = this.BOSS_ATTACK_COOLDOWN; // Start cooldown
         console.log(`Player hit boss! Boss health: ${this.boss.getHealth()}`);
       }
+    }
+  }
+
+  // Add boss room detection method
+  private checkBossRoomStatus(playerPos: Phaser.Math.Vector2) {
+    const tileX = playerPos.x;
+    const tileY = playerPos.y;
+
+    // Check if player is in a boss room
+    let currentlyInBossRoom = false;
+    for (let i = 0; i < (this.fov as any).map.rooms.length; i++) {
+      const room = (this.fov as any).map.rooms[i];
+      if ((this.fov as any).map.getBossLockedRooms().has(i)) {
+        if (tileX >= room.x && tileX < room.x + room.width &&
+          tileY >= room.y && tileY < room.y + room.height) {
+          currentlyInBossRoom = true;
+          break;
+        }
+      }
+    }
+
+    // Emit events when boss room status changes
+    if (currentlyInBossRoom && !this.inBossRoom) {
+      console.log("Player entered boss room!");
+      this.inBossRoom = true;
+      this.game.events.emit('playerEnteredBossRoom');
+    } else if (!currentlyInBossRoom && this.inBossRoom) {
+      console.log("Player left boss room!");
+      this.inBossRoom = false;
+      this.game.events.emit('playerLeftBossRoom');
     }
   }
 

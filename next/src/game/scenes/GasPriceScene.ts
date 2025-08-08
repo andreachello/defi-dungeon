@@ -5,6 +5,7 @@ export default class GasPriceScene extends Phaser.Scene {
     private gasPriceBackground: Phaser.GameObjects.Rectangle;
     private gasIcon: Phaser.GameObjects.Sprite;
     private updateTimer: Phaser.Time.TimerEvent | null = null;
+    private isInBossRoom: boolean = false; // Add this property
 
     // Gas price UI configuration - updated to match other boxes
     private readonly gasPriceWidth = 250; // Changed from 200 to 250
@@ -44,6 +45,7 @@ export default class GasPriceScene extends Phaser.Scene {
         );
         this.gasPriceBackground.setDepth(1000);
         this.gasPriceBackground.setStrokeStyle(this.borderWidth, this.borderColor);
+        this.gasPriceBackground.setVisible(false); // Start hidden
 
         // Create gas icon (using a flame-like sprite from items)
         this.gasIcon = this.add.sprite(
@@ -54,6 +56,7 @@ export default class GasPriceScene extends Phaser.Scene {
         );
         this.gasIcon.setScale(1.0);
         this.gasIcon.setDepth(1001);
+        this.gasIcon.setVisible(false); // Start hidden
 
         // Create gas price text
         this.gasPriceText = this.add.text(
@@ -69,6 +72,11 @@ export default class GasPriceScene extends Phaser.Scene {
         );
         this.gasPriceText.setOrigin(0, 0.5);
         this.gasPriceText.setDepth(1001);
+        this.gasPriceText.setVisible(false); // Start hidden
+
+        // Listen for boss room events
+        this.game.events.on('playerEnteredBossRoom', this.onPlayerEnteredBossRoom, this);
+        this.game.events.on('playerLeftBossRoom', this.onPlayerLeftBossRoom, this);
 
         // Start updating gas price
         this.updateGasPrice();
@@ -119,6 +127,30 @@ export default class GasPriceScene extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
+    }
+
+    private onPlayerEnteredBossRoom(): void {
+        console.log("GasPriceScene: Player entered boss room");
+        this.isInBossRoom = true;
+        this.showGasPrice();
+    }
+
+    private onPlayerLeftBossRoom(): void {
+        console.log("GasPriceScene: Player left boss room");
+        this.isInBossRoom = false;
+        this.hideGasPrice();
+    }
+
+    private showGasPrice(): void {
+        if (this.gasPriceBackground) this.gasPriceBackground.setVisible(true);
+        if (this.gasIcon) this.gasIcon.setVisible(true);
+        if (this.gasPriceText) this.gasPriceText.setVisible(true);
+    }
+
+    private hideGasPrice(): void {
+        if (this.gasPriceBackground) this.gasPriceBackground.setVisible(false);
+        if (this.gasIcon) this.gasIcon.setVisible(false);
+        if (this.gasPriceText) this.gasPriceText.setVisible(false);
     }
 
     destroy(): void {
