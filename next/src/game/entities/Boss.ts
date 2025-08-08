@@ -80,8 +80,7 @@ export default class Boss {
             const gas = parseFloat(data.fast); // or 'standard' / 'slow'
 
             if (!isNaN(gas)) {
-                const hearts = Math.floor((gas / 1e9) * 5); // ❤️ = gas price * 30
-                // const hearts = 3;
+                const hearts = Math.floor((gas / 1e9) * 3); 
                 this.bossHearts = hearts;
                 this.health = hearts;
                 console.log(`[Boss] Health set from gas price (${gas}): ${hearts}`);
