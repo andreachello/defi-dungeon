@@ -105,16 +105,17 @@ export default class TimerScene extends Phaser.Scene {
         const xPos = this.padding * 2;
         const yPos = gameTimerY;
 
-        this.gameTimerBackground = this.add.rectangle(
-            xPos,
-            yPos,
-            this.timerWidth,
-            this.timerHeight,
-            this.backgroundColor,
-            this.backgroundColorAlpha
-        );
-        this.gameTimerBackground.setDepth(1000);
-        this.gameTimerBackground.setVisible(true);
+        // Remove the background rectangle
+        // this.gameTimerBackground = this.add.rectangle(
+        //     xPos,
+        //     yPos,
+        //     this.timerWidth,
+        //     this.timerHeight,
+        //     this.backgroundColor,
+        //     this.backgroundColorAlpha
+        // );
+        // this.gameTimerBackground.setDepth(1000);
+        // this.gameTimerBackground.setVisible(true);
 
         this.gameTimerIcon = this.add.sprite(
             xPos + 30,
@@ -168,16 +169,17 @@ export default class TimerScene extends Phaser.Scene {
         const xPos = this.padding * 2;
         const yPos = speedTimerY;
 
-        this.background = this.add.rectangle(
-            xPos,
-            yPos,
-            this.timerWidth,
-            this.timerHeight,
-            this.backgroundColor,
-            this.backgroundColorAlpha
-        );
-        this.background.setDepth(1000);
-        this.background.setVisible(false);
+        // Remove the background rectangle
+        // this.background = this.add.rectangle(
+        //     xPos,
+        //     yPos,
+        //     this.timerWidth,
+        //     this.timerHeight,
+        //     this.backgroundColor,
+        //     this.backgroundColorAlpha
+        // );
+        // this.background.setDepth(1000);
+        // this.background.setVisible(false);
 
         this.speedIcon = this.add.sprite(
             xPos + 30,
@@ -241,21 +243,21 @@ export default class TimerScene extends Phaser.Scene {
         const gameTimerY = heartBottomY + 25;
         const speedTimerY = gameTimerY + this.timerHeight + 25; // Increased from 10 to 25 pixels below game timer
         const visionTimerY = speedTimerY + this.timerHeight + 10; // 10 pixels below speed timer
-        
 
         const xPos = this.padding * 2;
         const yPos = visionTimerY;
 
-        this.visionBackground = this.add.rectangle(
-            xPos,
-            yPos,
-            this.timerWidth,
-            this.timerHeight,
-            this.backgroundColor,
-            this.backgroundColorAlpha
-        );
-        this.visionBackground.setDepth(1000);
-        this.visionBackground.setVisible(false);
+        // Remove the background rectangle
+        // this.visionBackground = this.add.rectangle(
+        //     xPos,
+        //     yPos,
+        //     this.timerWidth,
+        //     this.timerHeight,
+        //     this.backgroundColor,
+        //     this.backgroundColorAlpha
+        // );
+        // this.visionBackground.setDepth(1000);
+        // this.visionBackground.setVisible(false);
 
         this.visionIcon = this.add.sprite(
             xPos + 30,
@@ -482,7 +484,6 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private showSpeedTimer() {
-        if (this.background) this.background.setVisible(true);
         if (this.title) this.title.setVisible(true);
         if (this.speedIcon) this.speedIcon.setVisible(true);
         if (this.countdownText) this.countdownText.setVisible(true);
@@ -490,7 +491,6 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private hideSpeedTimer() {
-        if (this.background) this.background.setVisible(false);
         if (this.title) this.title.setVisible(false);
         if (this.speedIcon) this.speedIcon.setVisible(false);
         if (this.countdownText) this.countdownText.setVisible(false);
@@ -498,7 +498,6 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private showVisionTimer() {
-        if (this.visionBackground) this.visionBackground.setVisible(true);
         if (this.visionTitle) this.visionTitle.setVisible(true);
         if (this.visionIcon) this.visionIcon.setVisible(true);
         if (this.visionCountdownText) this.visionCountdownText.setVisible(true);
@@ -506,7 +505,6 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private hideVisionTimer() {
-        if (this.visionBackground) this.visionBackground.setVisible(false);
         if (this.visionTitle) this.visionTitle.setVisible(false);
         if (this.visionIcon) this.visionIcon.setVisible(false);
         if (this.visionCountdownText) this.visionCountdownText.setVisible(false);
@@ -572,7 +570,7 @@ export default class TimerScene extends Phaser.Scene {
                 }
             }
 
-            if (!this.visionBackground?.visible) {
+            if (!this.background?.visible) {
                 this.showVisionTimer();
             }
         } else {
