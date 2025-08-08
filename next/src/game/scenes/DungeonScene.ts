@@ -324,6 +324,9 @@ export default class DungeonScene extends Phaser.Scene {
         this.fov.setVisionBoost(false);
       }
     });
+
+    // Emit dungeon scene ready event to start game timer
+    this.game.events.emit('dungeonSceneReady');
   }
 
   // Remove the createHeartUI and updateHealthDisplay methods since they're now in HealthScene

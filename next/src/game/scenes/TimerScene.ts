@@ -90,9 +90,16 @@ export default class TimerScene extends Phaser.Scene {
         // Listen for global game over event
         this.game.events.on('gameOver', this.onGameOver, this);
 
-        // Start game timer
-        this.startGameTimer();
-        this.updateGameTimer();
+        // Listen for dungeon scene ready event to start game timer
+        this.game.events.on('dungeonSceneReady', this.startGameTimer, this);
+
+        // Start game timer with a small delay to ensure dungeon scene is ready
+        this.time.delayedCall(200, () => {
+            if (!this.gameStartTime) {
+                console.log("Starting game timer with fallback");
+                this.startGameTimer();
+            }
+        });
 
         console.log("TimerScene setup completed");
     }
@@ -316,6 +323,7 @@ export default class TimerScene extends Phaser.Scene {
     }
 
     private startGameTimer() {
+        console.log("Starting game timer...");
         this.gameStartTime = this.time.now;
         this.lastGameSeconds = Math.ceil(this.gameDuration / 1000);
 
@@ -325,6 +333,7 @@ export default class TimerScene extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
+        console.log("Game timer started successfully");
     }
 
     private updateGameTimer() {
